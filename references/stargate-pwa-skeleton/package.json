@@ -1,0 +1,5 @@
+{
+  "name":"stargate-sgc-pwa",
+  "type":"module",
+  "scripts":{"dev":"bunx serve public","build":"echo build placeholder"}
+}

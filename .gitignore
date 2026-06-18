@@ -1,0 +1,27 @@
+# --- Build Artifacts & Output Directories ---
+# Directory containing the final, built output used by static servers/browsers
+dist/
+
+# Temporary build directories or local data caches that should not be committed.
+*.cache/
+
+# --- Dependency Management ---
+# Node modules directory created by Bun or npm
+node_modules/
+
+# If using package.json scripts that generate lock files (Bun users often use bun.lockb)
+bun.lockb 
+
+# --- Local/Generated Files Based on Project Context ---
+# Temporary runtime assets or data generated during local runs, but not part of the core source code.
+public/assets/*.svg.tmp
+*.temp.json
+
+# If you are dealing with environment-specific secrets that shouldn't be tracked:
+.env
+.env.local
+
+# Ignore build logs or intermediate files from scripts
+npm-debug.log*
+yarn-debug.log*
+bun-debug.log*

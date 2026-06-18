@@ -1,0 +1,25 @@
+{
+  "name": "sgc-dialing-computer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Screen-accurate SGC Stargate dialing computer — Three.js PWA",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run scripts/dev.js",
+    "serve": "bun run scripts/serve.js",
+    "preview": "SERVE_DIST=1 bun run scripts/serve.js",
+    "build": "bun run scripts/build.js",
+    "lint": "eslint public/src scripts --ext .js",
+    "lint:fix": "eslint public/src scripts --ext .js --fix"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "cdn": {
+    "three": "0.184.0",
+    "lil-gui": "0.21.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

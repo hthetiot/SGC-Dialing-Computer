@@ -42,16 +42,16 @@ export class Dialer {
     this.clock = { hh: "00", mm: "00", date: "01/01/20", day: "00" };
   }
 
+  // Short status strings that fit the left-panel STATUS box (no mode prefix → no overflow).
   get status() {
-    const m = this.mode === "incoming" ? "INCOMING" : "OUTGOING";
     switch (this.phase) {
       case "idle": return "STANDBY";
       case "spinning":
       case "locking":
-      case "between": return `${m} DIALING SEQUENCE`;
+      case "between": return "DIALING SEQUENCE";
       case "dialed": return "CHEVRONS ENCODED";
-      case "kawoosh": return "WORMHOLE ESTABLISHED";
-      case "active": return `${m} WORMHOLE ACTIVE`;
+      case "kawoosh": return "WORMHOLE OPEN";
+      case "active": return "WORMHOLE ACTIVE";
       case "aborting": return "DIALING ABORTED";
       default: return "STANDBY";
     }

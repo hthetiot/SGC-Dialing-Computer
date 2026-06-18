@@ -103,22 +103,37 @@ Abydos `[27,7,15,32,12,30,0]`, Apophis `[20,18,11,38,10,32,0]`.
 - Behavior: appears big in the gate center on lock, holds a beat, then flies out to its result
   box (shrinking, landing readable inside the box).
 
-### The circuit (routing topology — verified against target.png + the CRT active captures)
-Every trace ANCHORS on a real feature (a chevron tip or a box edge); none float. Two enclosures
-plus three trace groups:
+### The circuit (routing topology — verified against target.png + the targeted left-side zoom)
+Every trace ANCHORS on a real feature (a chevron tip, a box edge, the rail); none float. Each of
+the 7 result boxes maps to the chevron that locks for it, **in dialing order** (box _i_ ↔ the
+_i_-th locked chevron). The two unused bottom chevrons (250°, 290°) carry no trace.
 
-- **Outer frame**: one big rounded rect around the whole console, with a diagonal **chamfer at
-  the top-left** where the logo bay notches into the corner.
-- **Inner rail**: a nested rounded rect framing the gate + boxes region (x 0.205 → 0.955,
-  y 0.110 → 0.925).
-- **Right lanes (box → rail)**: each box's RIGHT edge → short horizontal → a **nested vertical
-  lane on the far right** (deeper per box) → up the lane → across to the top-rail's right corner.
-- **Left bus (box → gate)**: each box's LEFT edge → short horizontal → a single **vertical bus**
-  just left of the boxes (x ≈ 0.792).
-- **Chevron taps (bus → gate)**: diagonals from the bus to the gate's **RIGHT-hemisphere
-  chevron TIPS** only — 50°, 10°, 330° (computed `tip = (cx + R·cosθ, cy − R·sinθ)`). The
-  LEFT/upper chevrons (130/170/210/250) carry **no** box trace in the reference — only the right
-  side connects. So the circuit is a right-side fan, not a 7-spoke star.
+| box | chevron | position | routing |
+|---|---|---|---|
+| 1 | 50° | upper-right | direct diagonal: box LEFT edge → chevron tip |
+| 2 | 10° | right | direct diagonal: box LEFT edge → chevron tip |
+| 3 | 330° | lower-right | direct diagonal: box LEFT edge → chevron tip |
+| 4 | 210° | lower-left | box RIGHT edge → far-right lane → top rail → left rail → chevron |
+| 5 | 170° | left | via the rail bus (as box 4) |
+| 6 | 130° | upper-left | via the rail bus (as box 4) |
+| 7 | 90° | top (origin) | box RIGHT edge → lane → top rail → drop down to the top chevron |
+
+Structure carrying the above:
+- **Outer frame**: one big rounded rect around the console, with a diagonal **chamfer at the
+  top-left** where the logo bay notches in.
+- **Inner rail = shared bus**: left vertical edge (x ≈ 0.205) + rounded top-left corner + top
+  edge. The far-right box lanes, the top point-of-origin drop, and the left-chevron taps all
+  merge into this rail.
+- **Right diagonals** — boxes 1–3 reach the right-hemisphere chevrons (50/10/330) directly
+  across the gap (`tip = (cx + R·cosθ, cy − R·sinθ)`).
+- **Far-right lanes** — boxes 4–7 leave their RIGHT edge to **nested vertical lanes** (deeper per
+  box), rise, and run across the top into the rail.
+- **Left-chevron taps** — the left chevrons (130/170/210°) run a **short horizontal trace LEFT
+  into the left rail**; the top chevron (90°) is a **vertical drop from the top rail to its tip**.
+- The bottom pair (250°, 290°) get nothing — unused for a 7-symbol address.
+
+(Earlier notes called this a "right-side fan with no left connections" — that was wrong; the left
+chevrons DO connect, via the rail. The left zoom confirms it.)
 
 **State color (this is the key idle-vs-active distinction):**
 - **Idle / standby** (`tmp/target.png`): the whole circuit is **blue**; chevrons are unlit

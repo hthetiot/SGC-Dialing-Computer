@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>SGC Dialing Computer</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="theme-color" content="#02060f" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="icon" href="./icons/icon-192.png" />
+<link rel="apple-touch-icon" href="./icons/icon-512.png" />
+
+<!-- jsdelivr ONLY: the preview CSP whitelists cdn.jsdelivr.net/npm/, unpkg is blocked. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/",
+    "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.21.0/dist/lil-gui.esm.js"
+  }
+}
+</script>
+
+<style>
+  :root {
+    --bg: #02060f;
+    --mono: "DejaVu Sans Mono", "Consolas", "Courier New", monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: var(--bg); overflow: hidden; }
+  body { font-family: var(--mono); color: #eaf2ff; -webkit-user-select: none; user-select: none; }
+
+  #app { position: fixed; inset: 0; }
+
+  /* The authentic gate vector, recolored. Sits under the HUD canvas. */
+  #gate-host { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+               filter: drop-shadow(0 0 1px rgba(120,200,255,.28)); }
+  #gate-host svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  /* All strokes stay crisp & thin regardless of scale. */
+  #gate-host svg * { vector-effect: non-scaling-stroke; }
+  /* Default: filled glyphs/clamps render white. */
+  #gate-host #gate-root { fill: #e9f1ff; stroke: #cfe0ff; stroke-width: 1.1; }
+  /* Thin stroke-only elements: ring circles + glyph constellation lines. */
+  #gate-host .g-stroke { fill: none; stroke: #cfe0ff; stroke-width: 1.1; }
+  /* Delimiter tick marks: dimmer. */
+  #gate-host .g-tick { stroke: #8fb4ff; stroke-width: 1; }
+  /* Blue outer rim ring. */
+  #gate-host .g-rim { stroke: #2f6bff; stroke-width: 2;
+                      filter: drop-shadow(0 0 2px rgba(60,120,255,.55)); }
+  /* Engaged (locked) chevron turns red. */
+  #gate-host .g-lit { fill: #ff2d36; stroke: #ff5a62;
+                      filter: drop-shadow(0 0 2px rgba(255,40,50,.85)); }
+
+  /* HUD frames, text, boxes, circuit — drawn in one canvas above the gate. */
+  #hud { position: absolute; inset: 0; z-index: 2; }
+
+  /* 3D point-of-origin emblem, sits in the logo bay over the HUD. */
+  #logo { position: absolute; z-index: 3; pointer-events: none; }
+
+  /* CRT scanlines + vignette + faint flicker. */
+  .crt {
+    position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(0,0,0,0) 0px,
+        rgba(0,0,0,0) 2px,
+        rgba(0,0,0,0.18) 3px),
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+    mix-blend-mode: normal;
+    animation: flicker 6s infinite steps(60);
+  }
+  @keyframes flicker { 0%,100% { opacity: .9 } 50% { opacity: .82 } }
+
+  /* boot hint, removed once running */
+  #boot { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center;
+          color: #3f7bff; font-size: 14px; letter-spacing: .2em; }
+</style>
+</head>
+<body>
+  <div id="app">
+    <div id="gate-host"></div>
+    <canvas id="hud"></canvas>
+    <canvas id="logo"></canvas>
+    <div class="crt"></div>
+    <div id="boot">INITIALIZING DIALING COMPUTER…</div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

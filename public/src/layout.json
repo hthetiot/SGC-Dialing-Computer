@@ -1,0 +1,71 @@
+{
+  "_doc": "Measured anchors for the SGC dialing computer, normalized to the 1.25:1 (1000x800) reference frame. x/w are fractions of viewport width, y/h fractions of viewport height. Lengths meant to stay square (radii, strokes, fonts) are noted and scaled by the uniform unit u=vh/800 in code. Derived from 1781775793523_image.png + the target capture.",
+
+  "palette": {
+    "bg": "#02060f",
+    "blue": "#1d54ff",
+    "blueBright": "#3f7bff",
+    "blueDim": "#123",
+    "cyan": "#7fd8ff",
+    "white": "#eaf2ff",
+    "red": "#ff2630",
+    "redDim": "#5a0c10",
+    "grid": "#0a1a3a"
+  },
+
+  "header": {
+    "logoBay":   { "x": 0.030, "y": 0.018, "w": 0.078, "h": 0.120 },
+    "musicLine1":{ "x": 0.128, "y": 0.052 },
+    "musicLine2":{ "x": 0.128, "y": 0.078 },
+    "transport": { "x": 0.130, "y": 0.112 },
+    "binary":    { "x": 0.330, "y": 0.022, "w": 0.290, "h": 0.060 },
+    "destination":{ "x": 0.745, "y": 0.078 },
+    "topRail":   { "x": 0.205, "y": 0.110, "w": 0.760, "h": 0.060 }
+  },
+
+  "left": {
+    "panel":     { "x": 0.028, "y": 0.150, "w": 0.165, "h": 0.470 },
+    "timerArc":  { "cx": 0.050, "cy": 0.300, "r": 0.080 },
+    "timeText":  { "x": 0.120, "y": 0.272 },
+    "dateText":  { "x": 0.120, "y": 0.308 },
+    "dayText":   { "x": 0.120, "y": 0.344 },
+    "numbers": {
+      "colX": [0.072, 0.146],
+      "rowY": [0.390, 0.460, 0.530],
+      "values": [[2, 8], [4, 1], [1, 4]]
+    },
+    "status":    { "x": 0.034, "y": 0.660 },
+    "checklist": { "x": 0.028, "y": 0.685, "w": 0.165, "h": 0.245, "rows": 7 }
+  },
+
+  "gate": {
+    "center": { "x": 0.464, "y": 0.4775 },
+    "outerR": 0.222,
+    "chevronAngles": [90, 50, 10, 330, 290, 250, 210, 170, 130],
+    "lockOrder": [50, 10, 330, 290, 250, 210, 90]
+  },
+
+  "boxes": {
+    "first": { "x": 0.828, "y": 0.158, "w": 0.092, "h": 0.082 },
+    "stepY": 0.110,
+    "count": 7,
+    "numberDX": -0.022
+  },
+
+  "circuit": {
+    "railY": 0.140,
+    "laneX0": 0.940,
+    "laneStep": 0.009,
+    "chevronTap": 130
+  },
+
+  "footer": {
+    "lstCode1": { "x": 0.205, "y": 0.760 },
+    "lstCode2": { "x": 0.680, "y": 0.760 },
+    "readout":  { "x": 0.205, "y": 0.832, "w": 0.555, "h": 0.088 },
+    "authLabel":{ "x": 0.198, "y": 0.962 },
+    "authDigits":{ "x": 0.430, "y": 0.962, "value": "778927 - 57892387" },
+    "user":     { "x": 0.930, "y": 0.952, "value": "USER: SGT. W HARRIMAN" },
+    "sys":      { "x": 0.930, "y": 0.975, "value": "SYS: NOMINAL" }
+  }
+}

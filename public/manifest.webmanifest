@@ -2,7 +2,7 @@
   "name": "SGC Dialing Computer",
   "short_name": "SGC Dialer",
   "description": "Screen-accurate SGC Stargate dialing computer — Three.js PWA.",
-  "start_url": "./gate.html",
+  "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "any",

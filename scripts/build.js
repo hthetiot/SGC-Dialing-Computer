@@ -61,7 +61,7 @@ async function main() {
     `<script type="module">\n${bundle}\n</script>`
   );
 
-  await writeFile(DIST + "gate.html", html, "utf8");
+  await writeFile(DIST + "index.html", html, "utf8");
 
   // 4. PWA: manifest + icons (sw.js becomes a thin shell for the flat layout).
   await copyFile(PUB + "manifest.webmanifest", DIST + "manifest.webmanifest");
@@ -71,7 +71,7 @@ async function main() {
   // Flat-layout service worker: cache just index.html + manifest + icons + CDN at runtime.
   const sw = `// Auto-generated for dist/. App logic is inlined in index.html.
 const CACHE = "sgc-dialer-dist-v1";
-const SHELL = ["./", "./gate.html", "./manifest.webmanifest",
+const SHELL = ["./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -88,16 +88,16 @@ self.addEventListener("fetch", (e) => {
       const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy));
     }
     return res;
-  }).catch(() => caches.match("./gate.html"))));
+  }).catch(() => caches.match("./index.html"))));
 });
 `;
   await writeFile(DIST + "sw.js", sw, "utf8");
 
-  const bytes = (await readFile(DIST + "gate.html")).length;
+  const bytes = (await readFile(DIST + "index.html")).length;
   console.log(`✓ dist/index.html written (${(bytes / 1024).toFixed(0)} KB, self-contained)`);
   console.log(`  Inlined: layout.json, gate.svg, ${out.outputs.length} JS bundle`);
   console.log(`  Copied:  manifest.webmanifest, sw.js, icons/`);
-  console.log(`  Open dist/gate.html via any static server (needs http for the CDN import map).`);
+  console.log(`  Open dist/index.html via any static server (needs http for the CDN import map).`);
 }
 
 main();

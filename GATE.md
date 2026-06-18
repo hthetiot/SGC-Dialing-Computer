@@ -178,7 +178,7 @@ public/
     main.js             bootstrap, input, render loop
     layout.json         measured anchors + circuit path data
 scripts/{dev.js, serve.js, build.js}
-dist/gate.html          built, self-contained (inlines layout+SVG+bundle) — THE runnable file
+dist/index.html          built, self-contained (inlines layout+SVG+bundle) — THE runnable file
 ```
 
 Run: `bun run dev` (live reload) · `bun run build` → `dist/gate.html` · `SERVE_DIST=1 bun run

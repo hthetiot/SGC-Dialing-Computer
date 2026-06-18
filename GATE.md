@@ -9,7 +9,7 @@ hard constraints — not a record of work done.
 
 ## 1. The source assets and what each is FOR
 
-All in `/mnt/user-data/uploads/`.
+All in `references/`.
 
 ### The gate geometry (the one true base)
 `Milky_way_stargate_with_detailed_glyphs.svg` — authentic full vector Stargate.

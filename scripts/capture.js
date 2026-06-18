@@ -21,8 +21,8 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const PUB = ROOT + "public/";
 const TMP = ROOT + "tmp/";
 const PORT = Number(process.env.PORT ?? 0); // 0 = ephemeral free port (never collides)
-const WIDTH = Number(process.env.WIDTH ?? 1490);
-const HEIGHT = Number(process.env.HEIGHT ?? 1080);
+const WIDTH = Number(process.env.WIDTH ?? 1491);   // match target.png exactly (was 1490)
+const HEIGHT = Number(process.env.HEIGHT ?? 1074);  // match target.png exactly (was 1080)
 const WAIT = Number(process.env.WAIT ?? 1200);
 
 const state = process.argv[2] || "idle";

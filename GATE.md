@@ -36,31 +36,53 @@ Confirmed by radius: the clamps + housing plates are the fixed outer structure; 
 turns within them.
 
 ### UI layout references (the cyan SGC design = the target)
-- `1781775793523_image.png` (1000×800, flat-on) — **CANONICAL layout frame.** Every HUD anchor
-  is measured from this.
-- `1781780688811_image.png` — clean hi-res recreation; clearest view of the **circuit routing**
-  and the **red chevron-lock** state.
-- `1781784110871_preview.webp` — shows the **large bold glyph in the gate center** while dialing.
-- `1781781242383_image.png`, `Dialing_computer__Unending_.jpg` — red incoming/active state.
-- `preview.webp`, `preview__3_.webp`, `2ndGenStargate.webp` — secondary cross-checks.
+- **`tmp/target.png` (1491×1074, flat-on) — CANONICAL layout frame, the idle/standby state.**
+  Every HUD anchor is measured from this with `scripts/probe.js`. This is the match target.
+- The **CRT active/dialing captures** (provided in-chat) define the ACTIVE state: red chevron
+  indicators, red circuit traces fanning to the filled boxes, the hero glyph in the gate center,
+  and the checklist showing "N OK". Treat these as behavior/colour reference (photographed at an
+  angle, so not pixel-measurable).
+- `references/Dialing_computer.webp`, `references/Dialing_computer_(Unending).jpg`,
+  `references/preview.webp`, `references/preview (3).webp` — secondary cross-checks.
 
-### Glyph-behavior reference (BEHAVIOR ONLY)
-`1781781847492_Dialing_computer.webp` — the **SG-1 PILOT** dialer (teal, NEC monitor). Its UI
-design is different and must be **ignored**; use it only to understand glyph activation
-behavior. Never reproduce its frames.
+### Visual-verification tooling (this repo, Node-only — works with node/npm/bun)
+- `npm run capture -- <state>` → `tmp/shot_<state>.png` (states: idle|dialing|dialed|kawoosh|
+  active, via the `?state=` deep-link in main.js; serves `public/` live, no build needed).
+- `npm run zoom -- <file> [x y w h] [z]` → `tmp/zoom.png` (magnified crop for close review).
+- `npm run diff -- <a> <b> [crop]` → `tmp/diff.png` (red=A/green=B/yellow=aligned overlay).
+- `node scripts/probe.js row <y>|col <x>|px <x> <y>|blue-row <y> [file]` — decodes a PNG and
+  reports exact edge coordinates, used to set layout.json from real target pixels.
+- Workflow: clean `tmp/` (keep `target.png`) → `capture` → `diff`/`zoom`/`probe` → adjust
+  `layout.json`/`hud.js` → repeat.
 
 ---
 
 ## 2. Screen-accurate facts and measurements
 
-### Gate placement (normalized to the 1000×800 reference)
-- Ring center: **(0.464, 0.4775)**. Outer radius: **0.222** (of viewport width).
+### Gate placement (MEASURED from `tmp/target.png`, 1491×1074, via `scripts/probe.js`)
+- Ring center: **(0.498, 0.478)** = px (743, 513). Outer blue rim radius **0.211** of viewport
+  width = px 315. (Earlier 0.464/0.222 was eyeballed and wrong — the gate sits dead-centerish,
+  not left.) White ring band radius ≈ 0.157 (px 234).
 - Chevron radius 0.93·R; glyph track 0.70–0.875·R; **event-horizon / inner void 0.66·R**.
+
+### Other measured anchors (fractions of viewport; see `public/src/layout.json`)
+- Outer frame: left 0.020, right 0.969, top 0.014, bottom 0.994 (px 30/1445/16/1068), with a
+  diagonal chamfer at the top-left where the logo bay notches in.
+- Logo bay: x 0.030, y 0.052, w 0.093, h 0.089.
+- Timer arc: center (0.101, 0.267), radius 0.077 of height (px center 150,287 r 83). Clock
+  (HH:MM / date / day) is CENTER-aligned inside the arc.
+- Result boxes: first at x 0.830, y 0.154, w 0.0865, h 0.094; stepY 0.110; 7 boxes. Number sits
+  small at the box bottom-left.
+- Footer: readout x 0.193 w 0.569; auth digits in segmented cells x0 0.432 → x1 0.781; LST CODE
+  #1 x 0.205, #2 x 0.693; USER/SYS right-anchored.
+- STATUS is a small bordered box (x 0.029, w 0.158) ABOVE the checklist; text must fit inside it
+  (keep it short — no OUTGOING/INCOMING prefix or it overflows the panel).
 
 ### Chevron angles (degrees, 0 = +X, CCW)
 - The 9 chevron clamp centers: `[90, 50, 10, 330, 290, 250, 210, 170, 130]`.
-- The 7 that engage during dialing, in lock order 1..7: `[50, 10, 330, 290, 250, 210, 90]`
-  (chevron 7 / point-of-origin = top, 90°).
+- A 7-symbol address engages **7 chevrons; the 2 NOT used are the bottom pair (250°, 290°)** —
+  the chevrons flanking 6 o'clock stay dark. Lock order 1..7: `[50, 10, 330, 210, 170, 130, 90]`
+  (right side down, skip the bottom two, up the left side, point-of-origin / top 90° last).
 
 ### Glyph ring order (index 0..38)
 Origin, Crater, Virgo, Bootes, Centaurus, Libra, Serpens_Caput, Norma, Scorpius,
@@ -81,16 +103,30 @@ Abydos `[27,7,15,32,12,30,0]`, Apophis `[20,18,11,38,10,32,0]`.
 - Behavior: appears big in the gate center on lock, holds a beat, then flies out to its result
   box (shrinking, landing readable inside the box).
 
-### The circuit (routing topology — this is subtle)
-The box connectors do NOT fan diagonally from the gate. The real routing:
-- A top rail runs from left of the gate, up, across the top, with a step-down at the top-right.
-- The rail **links to a gate chevron** (a diagonal trace from the rail's left segment down to
-  the top-left chevron, ~130°) — the conductor connects to the gate, it doesn't float.
-- From the top-right corner each box trace runs RIGHT past the boxes to a **nested vertical
-  lane on the far right**, drops down, then comes back LEFT into the box's right edge. The
-  lanes nest (deeper per box). The whole network reddens on activation.
-- KNOWN GAP: this is close but not yet a pixel-faithful match to the reference; per-trace
-  detail still differs.
+### The circuit (routing topology — verified against target.png + the CRT active captures)
+Every trace ANCHORS on a real feature (a chevron tip or a box edge); none float. Two enclosures
+plus three trace groups:
+
+- **Outer frame**: one big rounded rect around the whole console, with a diagonal **chamfer at
+  the top-left** where the logo bay notches into the corner.
+- **Inner rail**: a nested rounded rect framing the gate + boxes region (x 0.205 → 0.955,
+  y 0.110 → 0.925).
+- **Right lanes (box → rail)**: each box's RIGHT edge → short horizontal → a **nested vertical
+  lane on the far right** (deeper per box) → up the lane → across to the top-rail's right corner.
+- **Left bus (box → gate)**: each box's LEFT edge → short horizontal → a single **vertical bus**
+  just left of the boxes (x ≈ 0.792).
+- **Chevron taps (bus → gate)**: diagonals from the bus to the gate's **RIGHT-hemisphere
+  chevron TIPS** only — 50°, 10°, 330° (computed `tip = (cx + R·cosθ, cy − R·sinθ)`). The
+  LEFT/upper chevrons (130/170/210/250) carry **no** box trace in the reference — only the right
+  side connects. So the circuit is a right-side fan, not a 7-spoke star.
+
+**State color (this is the key idle-vs-active distinction):**
+- **Idle / standby** (`tmp/target.png`): the whole circuit is **blue**; chevrons are unlit
+  (white/blue); gate center empty; boxes empty; checklist rows blank.
+- **Active / dialing** (the CRT captures): as each chevron engages, **its tap trace + its box
+  trace turn RED** and fan from the engaged chevron to that box; the box **fills with the locked
+  glyph**; the checklist row shows **"N OK"**. Unengaged traces stay blue. A large **hero glyph**
+  of the symbol being locked shows in the gate center. Box 7 = point-of-origin (Earth) glyph.
 
 ---
 
@@ -99,16 +135,24 @@ The box connectors do NOT fan diagonally from the gate. The real routing:
 Independent, individually-toggleable canvas layers. **Each layer owns its own text** (labels
 live with their layer — there is no separate "labels" layer, and no standalone "frame" layer).
 
-- `header` — top bar enclosure, logo bay frame, DESTINATION text, indicator dots.
-- `binary` — left scrolling binary panel + frame.
-- `checklist` — STATUS line + the 7-row chevron-lock checklist.
-- `footer` — bottom readout box, AUTHORIZATION CODE, SYS: NOMINAL, LST CODE #1/#2, the
-  wormhole countdown.
-- `boxes` — the 7 result boxes + numbers + landed glyphs.
-- `circuit` — the gate-to-boxes trace network (replaces any "frame").
+- `outerFrame` — the big enclosing rounded rect + top-left chamfer + logo bay box. Drawn first.
+- `header` — music text + transport (◀◀ ▶ ▶▶), centered binary dot panel (dim, ~3 rows),
+  DESTINATION text, inner rail enclosure.
+- `left` — timer arc + centered clock/date/day, the 2×3 numbers grid with sparklines, the
+  bordered STATUS box, and the checklist.
+- `checklist` — 7 rows inside a beveled panel: [left square] [SHORT rounded red bar]
+  [blue number] [right square], plus a vertical divider creating a thin right tab. Bars are red
+  only for locked rows (active/dialed); blank otherwise. Active also shows "N OK" per the refs.
+- `footer` — LST CODE #1/#2, the countdown icon, the readout box (holds the 38-min countdown
+  when active) with status dots, **segmented** AUTHORIZATION CODE cells, USER/SYS.
+- `boxes` — the 7 result boxes + small bottom-left numbers + landed glyphs (filled on lock).
+- `circuit` — the gate-to-boxes trace network (see §2). Blue idle, reddens per engaged chevron.
 
-Red chevron lock = recolor the actual `Chevron_Locks` clamp geometry for that position (split
-per-angle), NOT a floating overlay arrowhead.
+**Chevron lock indicator** (decided from the CRT reference): light a **clean red V indicator**
+at the engaged chevron position — do NOT redden the whole `Chevron_Locks` housing (that reads as
+a red blob). The authentic white housing stays; only a crisp red chevron mark turns on.
+The ring's constellation glyphs stay ON the ring (explicit project choice), even though the
+clean refs show an empty tick band — the symbol ALSO appears as the hero glyph in the center.
 
 ---
 
@@ -146,9 +190,11 @@ sequence but is initiated remotely (and on Earth would trigger the iris/defense 
 - **CDN must be jsdelivr**, not unpkg. The Claude preview CSP only whitelists
   `cdn.jsdelivr.net/npm/`; unpkg is blocked. Pins: three@0.184.0, lil-gui@0.21.0.
 - Served over **http(s)**, not file:// (the import map needs an origin).
-- The build sandbox has **no GPU/WebGL and no browser** — live rendering cannot be verified
-  here. Verify geometry/layout/animation math by rendering to PNG (cairosvg). Anything visual
-  (3D emblem, fly-out motion, sound, timer pulse) needs a real-browser smoke test.
+- Verify visually with **headless Chrome** via `npm run capture/zoom/diff` (Chrome is present on
+  this Windows host; swiftshader covers the WebGL emblem). `--virtual-time-budget` does NOT
+  advance the rAF loop in new-headless, so the auto-demo won't progress in a screenshot — use the
+  `?state=` deep-link to render a specific phase deterministically. Sound/timer pulse still need a
+  real interactive browser.
 - Bun installed via `npm i -g bun` (bun.sh is blocked in-sandbox). Node v22.22.2.
 - Under an **orthographic camera** (used so the WebGL gate aligns 1:1 with the 2D HUD), a
   `rotation.y` flip is invisible (no perspective). Drive any "flip" via scale.x instead.

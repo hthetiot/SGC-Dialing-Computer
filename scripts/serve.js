@@ -17,7 +17,7 @@ Bun.serve({
   port: PORT,
   async fetch(req) {
     let { pathname } = new URL(req.url);
-    if (pathname === "/") pathname = process.env.SERVE_DIST ? "/gate.html" : "/index.html";
+    if (pathname === "/") pathname = "/index.html";
     const file = Bun.file(ROOT + pathname.slice(1));
     if (await file.exists())
       return new Response(file, { headers: { "content-type": typeFor(pathname), "cache-control": "no-cache" } });

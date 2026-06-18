@@ -9,8 +9,11 @@
     "serve": "bun run scripts/serve.js",
     "preview": "SERVE_DIST=1 bun run scripts/serve.js",
     "build": "bun run scripts/build.js",
-    "lint": "eslint public/src scripts --ext .js",
-    "lint:fix": "eslint public/src scripts --ext .js --fix"
+    "capture": "bun run scripts/capture.js",
+    "zoom": "bun run scripts/zoom.js",
+    "diff": "bun run scripts/diff.js",
+    "lint": "eslint \"public/src/**/*.js\" \"scripts/**/*.js\"",
+    "lint:fix": "eslint \"public/src/**/*.js\" \"scripts/**/*.js\" --fix"
   },
   "engines": {
     "bun": ">=1.0.0"

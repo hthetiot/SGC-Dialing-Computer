@@ -159,30 +159,38 @@ sequence but is initiated remotely (and on Earth would trigger the iris/defense 
 
 ## 6. Project shape (where things live)
 
+**v5 rendering approach (important):** the gate is mounted as a LIVE recolored SVG in the DOM
+(rotating ring group vs. fixed chevron housings), NOT extruded into Three.js geometry. This is
+why it renders reliably in any environment (no GPU needed for the gate). The HUD is one 2D
+canvas with six layer-draw functions. Three.js is used only for the small rotating
+point-of-origin emblem in the logo bay. The authentic glyphs come straight from gate.svg, so
+there is no separate glyphs.js.
+
 ```
 public/
-  index.html            dev entry: jsdelivr import map, canvases, CRT/scanline, PWA meta
+  index.html            dev entry: jsdelivr import map, gate-host/hud/logo, CRT/scanline, PWA meta
   manifest.webmanifest, sw.js, icons/   (icons generated from the gate SVG; maskable + any)
   assets/gate.svg       base gate (entities resolved)
   src/
-    glyphs.js           39 glyphs normalized 100×100
-    addresses.js        canonical addresses
+    addresses.js        39-glyph ring order + canonical addresses
     screen.js           responsive mapper: faithful at 1.25:1, edge-anchored otherwise
-    gate.js             SVG→Three.js; ringGroup/staticGroup; glyph + hero-glyph anims
-    logo.js             3D point-of-origin emblem
-    dialer.js           state machine + 38-min timer + mode
-    hud.js              the 6 HUD layers
-    scene.js            ortho pixel-space renderer, bloom, event horizon, picking
+    gate.js             gate.svg → live DOM SVG; ring (rotating) vs fixed groups; recolor;
+                        per-angle chevron split for red locks
+    logo.js             3D point-of-origin emblem (Three.js, perspective, own canvas)
+    dialer.js           state machine + 38-min timer + mode (+ wall clock)
+    hud.js              the 6 HUD layers drawn to one 2D canvas
     sound.js            Web-Audio synthesized SFX (offline-capable)
-    debug.js            lil-gui panel (top-left, below logo bay)
-    main.js             bootstrap, input, render loop
-    layout.json         measured anchors + circuit path data
+    debug.js            lil-gui panel — HIDDEN by default, toggled by clicking the SGC logo
+                        emblem (logo bay). Top-right when shown.
+    main.js             bootstrap, input, auto-demo, render loop
+    layout.json         measured anchors (normalized fractions) + circuit data + palette
 scripts/{dev.js, serve.js, build.js}
 dist/index.html          built, self-contained (inlines layout+SVG+bundle) — THE runnable file
 ```
 
-Run: `bun run dev` (live reload) · `bun run build` → `dist/gate.html` · `SERVE_DIST=1 bun run
-preview` · `bun run lint`.
+Run: `bun run dev` (live reload) · `bun run build` → `dist/index.html` · `SERVE_DIST=1 bun run
+preview` · `bun run lint`. Controls: Space = dial/abort · M = toggle mode · A = incoming
+(Apophis) · click the SGC logo = show/hide the debug panel.
 
 ### Responsive rule
 Designed at aspect **1.25:1** (1000×800). At that aspect the layout is pixel-faithful to the

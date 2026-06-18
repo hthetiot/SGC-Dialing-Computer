@@ -4,6 +4,7 @@ dist/
 
 # Temporary build directories or local data caches that should not be committed.
 *.cache/
+tmp/
 
 # --- Dependency Management ---
 # Node modules directory created by Bun or npm
@@ -24,4 +25,4 @@ public/assets/*.svg.tmp
 # Ignore build logs or intermediate files from scripts
 npm-debug.log*
 yarn-debug.log*
-bun-debug.log*
+bun-debug.log*tmp/

@@ -44,14 +44,30 @@ turns within them.
 ### UI layout references (the cyan SGC design = the target)
 - **`source/target.png` (1491×1074, flat-on) — CANONICAL layout frame.** Every HUD anchor is
   measured from `source/mask.png` (its crisp trace). This is the match target.
-- The **CRT active/dialing captures** (`source/Dialing_computer_*.webp/.jpg`) define the ACTIVE
-  state: red chevron indicators, red circuit traces fanning to the filled boxes, the hero glyph in
-  the gate center, the checklist showing "N OK". Behaviour/colour reference only (shot at an angle,
-  not pixel-measurable).
+- The **CRT active/dialing captures** (`source/Dialing_computer_(2|Dialing|Unending).*`) are
+  **behaviour/colour reference ONLY** — shot at an angle, uncropped/skewed, and a slightly
+  **different panel variant** (their LEFT column is a scrolling binary-data panel where target.png
+  has the timer/clock/numbers grid). Do NOT pixel-measure them. `Dialing_computer_(Pilot
+  Animation).webp` is an even older animation style — animation reference only.
+
+### What the active-state captures confirm (used for behaviour, not geometry)
+- **STATUS text is phase-dependent**: `STATUS: ACTIVE` once the wormhole is up (vs `DIALING
+  SEQUENCE` while dialing). The header `DESTINATION:` carries a colon in these captures.
+- **Checklist** locked rows read `N OK` (checkbox + "OK"); a fully dialed address = all 7 `OK`.
+- **Circuit + chevrons redden as each chevron engages.** Idle = all blue; per-lock = that chevron's
+  V indicator + its box trace turn red; fully active (`Unending`) = ALL traces + ALL chevrons red.
+- **Result boxes fill with the locked glyph in dialing order** — boxes 1–2 filled mid-dial
+  (`(2).webp`), all 7 filled when complete (`Unending`).
+- **Gate center** shows a big bold **hero glyph** while encoding each symbol; collapses to a small
+  event-horizon point once the wormhole is active.
+- **Chevrons render as inward-pointing V indicators (▽)** over a **segmented tick band** around the
+  ring — both visible on the gate in every capture (and in target.png).
+- **Circuit routing CONFIRMED**: the red traces run from boxes 1–3 directly (diagonal) to the
+  right-hemisphere chevrons — matching `source/trace.json` `circuit`. Good cross-check of the topology.
 
 ### Visual-verification tooling — see **[PIPELINE.md](PIPELINE.md)** for the full pixel-perfect flow
 The measurement loop (probe → grid → zoom → trace) reads `source/mask.png` and writes to
-`tmp/<script>/`; `trace.json` is the design source and `scripts/trace.js` renders it. Legacy
+`tmp/<script>/`; `source/trace.json` is the design source and `scripts/trace.js` renders it. Legacy
 `capture`/`diff` (compare a live app render to `source/target.png`) are used later, at build time.
 
 ### Sources & tmp layout
@@ -72,17 +88,17 @@ Measure `source/mask.png`, not the photo. All §2 numbers were read from it.
 - `node scripts/zoom.js <file> [x y w h] [z]` → `tmp/zoom/<stem>_x_y_w_h_z.png` (params in name).
   `<file>` resolves from `source/` then `tmp/` (tmp may include a subfolder, e.g. `mask/over.png`).
 - `node scripts/trace.js [target|mask|raw]` → `tmp/trace/trace_<arg>.png` — VALIDATION overlay:
-  the whole vector model from `trace.json` in distinct colours + legend, over the brightened target
+  the whole vector model from `source/trace.json` in distinct colours + legend, over the brightened target
   (default) / dimmed crisp **mask** / black (`raw`). Confirm every line/path here.
 - `node scripts/trace.js schema` → `tmp/trace/schema.png` — PREVIEW: a filled, SGC-styled render of
-  `trace.json` on dark navy (blue frame, cyan text, gate rings, red checklist bars, …). This is the
+  `source/trace.json` on dark navy (blue frame, cyan text, gate rings, red checklist bars, …). This is the
   "figma": what the HUD will look like, straight from the data.
 - `node scripts/trace.js match [opacity]` → `tmp/trace/match.png` — the schema preview overlaid on
   the real target at `opacity` (default 0.62) to confirm it lines up. e.g. `… match 0.5`.
 
 (`mask.js` and `circuits.js` were removed — folded into `probe.js` auto-invert and `trace.js mask`.)
 
-### `trace.json` (THE design source — the "figma" for the HUD)
+### `source/trace.json` (THE design source — the "figma" for the HUD)
 All HUD geometry in **target pixels (1491×1074)**, measured from the mask: every element is a
 keyed block (`frame, rail, logoBay, header, timer, numbers, checklist, footer, boxes, gate,
 circuit, texts`). `trace.js schema` renders it filled; `match` checks the fit. Once the preview
@@ -99,7 +115,7 @@ matches, `public/src/layout.json` is derived from it (normalize by /1491 x, /107
   90→(743,196) · 50→(933,287) · 10→(1035,462) · 330→(1011,668) · 290→(848,802) ·
   250→(638,802) · 210→(476,667) · 170→(451,462) · 130→(553,287). (290/250 = unused bottom pair.)
 
-### Other measured anchors (px @ 1491×1074; full set lives in `trace.json`)
+### Other measured anchors (px @ 1491×1074; full set lives in `source/trace.json`)
 - Outer frame: x0 29, y0 12, x1 1458, y1 1069, **plain rounded rectangle, corner r≈24 on all four
   corners (NO chamfer)**. The logo bay + header are separate boxes sitting inside the top-left;
   there is no diagonal cut in the frame itself. (An earlier "top-left chamfer" note was wrong.)
@@ -125,7 +141,7 @@ matches, `public/src/layout.json` is derived from it (normalize by /1491 x, /107
   is the `-` gap), digit baseline y≈1028; label "AUTHORIZATION CODE:" at x≈290. LST CODE #1 x≈300,
   #2 x≈1016, y≈812. USER: / SYS: right block at x≈1245, y 1008 / 1036.
 
-### Text anchors (measured TOP-LEFT px + font size; all in `trace.json` `texts[]`, left-aligned)
+### Text anchors (measured TOP-LEFT px + font size; all in `source/trace.json` `texts[]`, left-aligned)
 credit1 "David Arnold arr. Joel Goldsmith" (200,37 s19) · credit2 "Stargate SG-1: Main Title"
 (200,65 s19) · DESTINATION (1112,73 s28) · clock 17:56 (102,267 s33) · date 29/03/20 (102,313 s24)
 · day 29 (138,344 s28) · STATUS: DIALING SEQUENCE (42,702 s18) · LST CODE # 1 (307,809 s26) ·
@@ -134,7 +150,7 @@ LST CODE # 2 (1016,809 s26) · AUTHORIZATION CODE: (292,1041 s21) · USER: SGT. 
 values [[2,8],[4,1],[1,4]] at cols x 100/215, rows y 415/490/565, size 24, sparkline +33 below each.
 (The SGC font is a wide custom face; monospace in the trace overlay reads a bit wider — anchors match.)
 
-### Circuit anchors (the trace network — all in `trace.json` as explicit polylines)
+### Circuit anchors (the trace network — all in `source/trace.json` as explicit polylines)
 Right boxes 1–3 leave the box LEFT edge (box1 = single shallow diagonal to its tip; boxes 2–3 =
 horizontal stub to **turnX 1178** then a diagonal to the tip). Boxes 4–7 leave the RIGHT edge into
 **nested lanes x 1401/1415/1429/1443**, rise to **nested top-rail levels y 137/123/109/96**, run

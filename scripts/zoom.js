@@ -15,14 +15,15 @@
 
 import http from "node:http";
 import { spawn } from "node:child_process";
-import { existsSync, createReadStream, readSync, openSync, closeSync, mkdirSync } from "node:fs";
+import { existsSync, createReadStream, readSync, openSync, closeSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const OUTDIR = ROOT + "tmp/zoom/";
 const PORT = Number(process.env.PORT ?? 0);
 
-const a = process.argv.slice(2);
+const STACK = process.argv.includes("-s");   // -s keeps previous crops; default clears tmp/zoom/
+const a = process.argv.slice(2).filter((x) => x !== "-s");
 const file = a[0] || "target.png";
 const nums = a.slice(1).map(Number).filter((n) => !Number.isNaN(n));
 
@@ -31,6 +32,7 @@ const resolve = (name) => { for (const base of [ROOT + "source/", ROOT + "tmp/"]
 const inPath = resolve(file);
 if (!inPath) { console.error(`✗ not found in source/ or tmp/: ${file}`); process.exit(1); }
 mkdirSync(OUTDIR, { recursive: true });
+if (!STACK) for (const fn of readdirSync(OUTDIR)) if (fn.endsWith(".png")) rmSync(OUTDIR + fn);
 
 // PNG IHDR dimensions (big-endian uint32 @ offset 16/20)
 function pngSize(p) {

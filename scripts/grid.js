@@ -9,14 +9,15 @@
 
 import http from "node:http";
 import { spawn } from "node:child_process";
-import { readFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const SRC = ROOT + "source/";
 const TMP = ROOT + "tmp/grid/";
 mkdirSync(TMP, { recursive: true });
-const T = JSON.parse(readFileSync(ROOT + "trace.json", "utf8"));
+if (!process.argv.includes("-s")) for (const fn of readdirSync(TMP)) if (fn.endsWith(".png")) rmSync(TMP + fn);
+const T = JSON.parse(readFileSync(ROOT + "source/trace.json", "utf8"));
 const W = T.canvas.w, H = T.canvas.h;
 const TILES = process.argv[2] === "tiles";
 const COLS = Number(process.argv[3] || 4), ROWS = Number(process.argv[4] || 3), Z = Number(process.argv[5] || 2);

@@ -1,12 +1,20 @@
-// trace.js — render trace.json (the "figma" / design source for the HUD).
+// trace.js — RENDERER for source/trace.json.
 //
 //   node scripts/trace.js [target|mask|raw]  # VALIDATION overlay: distinct-colour vectors + legend
 //                                            #   over the brightened target / dimmed mask / black
 //   node scripts/trace.js schema             # PREVIEW: filled, SGC-styled render on dark bg
 //   node scripts/trace.js match              # schema preview overlaid on the real target @ opacity
 //
-// Outputs -> tmp/trace/<mode>.png. Edit trace.json -> re-run -> eyeball.
-// layout.json (the app's data) is derived from trace.json once the preview matches.
+// Outputs -> tmp/trace/<mode>.png.
+//
+// ROLES (important):
+//   • source/trace.json  = the DESIGN SOURCE ("figma"): pure data — geometry, text, values, colours.
+//                          It is what the app IMPLEMENTATION consumes; keep it rich + descriptive.
+//   • scripts/trace.js   = the RENDERER. It MAY contain logic (how each element is drawn). Tweak the
+//                          drawing here; put measurements/data in trace.json, never inline them here.
+//
+// For an automated/LLM pass: only edit between the `LLM-EDIT REGION` markers below (the render
+// logic). Everything outside them is boilerplate (paths, arg parsing, headless-Chrome plumbing).
 
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -26,14 +34,17 @@ const MATCH_OP = Number(process.argv[3] ?? 0.62);   // node scripts/trace.js mat
 const UNDER = ARG === "match" ? "target.png" : ARG === "mask" ? "mask.png" : "target.png";
 
 // trace.js holds NO data — everything (geometry, text, values, colours) comes from trace.json.
-const T = JSON.parse(readFileSync(ROOT + "trace.json", "utf8"));
+const T = JSON.parse(readFileSync(ROOT + "source/trace.json", "utf8"));
 const W = T.canvas.w, H = T.canvas.h;
-const MODEL = { frame: T.frame, rail: T.rail, logoBay: T.logoBay, header: T.header, timer: T.timer, numbers: T.numbers, status: T.status, checklist: T.checklist, footer: T.footer, boxes: T.boxes, gate: T.gate, texts: T.texts };
+const MODEL = { frame: T.frame, rail: T.rail, logoBay: T.logoBay, header: T.header, timer: T.timer, numbers: T.numbers, binaryDots: T.binaryDots, status: T.status, checklist: T.checklist, footer: T.footer, boxes: T.boxes, gate: T.gate, texts: T.texts };
 const CIRCUIT = T.circuit, STYLE = T.style;
 
 // ============================================================================
 const ops = JSON.stringify({ W, H, MODEL, CIRCUIT, STYLE, RAW, UNDER, SCHEMA, MATCH, MATCH_OP });
 
+// ╔══════════════════════════ LLM-EDIT REGION START ══════════════════════════╗
+// Rendering logic only (runs in the headless-Chrome canvas). All numbers/text/colours come from
+// trace.json via `M`/`D.STYLE`; do not hard-code data here — edit trace.json for that.
 const HTML = `<!doctype html><meta charset=utf8><style>html,body{margin:0;background:#000}</style>
 <canvas id=c></canvas><script>
 const D = ${ops}, M = D.MODEL;
@@ -45,6 +56,25 @@ function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.
 function L(x0,y0,x1,y1){g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();}
 function poly(pts){g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();}
 function lab(t,x,y,col){g.fillStyle=col;g.font='12px monospace';g.fillText(t,x,y);}
+// binary-dot panel: partial corner brackets (only the listed corners) + a deterministic dot scatter
+function bdots(z,dotCol,borderCol){
+  g.strokeStyle=borderCol; g.lineWidth=1.5; const A=12;
+  const corner=(cx,cy,dx,dy)=>{g.beginPath();g.moveTo(cx+dx*A,cy);g.lineTo(cx,cy);g.lineTo(cx,cy+dy*A);g.stroke();};
+  const c=z.corners||[];
+  if(c.includes('tl'))corner(z.x,z.y,1,1); if(c.includes('tr'))corner(z.x+z.w,z.y,-1,1);
+  if(c.includes('bl'))corner(z.x,z.y+z.h,1,-1); if(c.includes('br'))corner(z.x+z.w,z.y+z.h,-1,-1);
+  g.fillStyle=dotCol; const cw=z.w/z.cols, ch=z.h/z.rows;
+  for(let j=0;j<z.rows;j++)for(let i=0;i<z.cols;i++){ if(((i*7+j*13+(z.seed||0)*5)%5)<2)
+    g.fillRect(z.x+i*cw+cw/2-1.5, z.y+j*ch+ch/2-1.5, 3, 3); }
+}
+// sparkline mini-chart: a near-flat WAVY data line + a straight baseline beneath it
+function spark(sx,sy,sw,base,seed,col){
+  g.strokeStyle=col; g.lineWidth=1.2;
+  g.beginPath(); g.moveTo(sx,sy);
+  for(let k=1;k<=12;k++){ const t=seed+k*5; const b=(t%9<2)?-5:(t%5<2?-2:0); g.lineTo(sx+k*sw/12, sy+b); }
+  g.stroke();
+  g.beginPath(); g.moveTo(sx,sy+base); g.lineTo(sx+sw,sy+base); g.stroke();
+}
 
 // ---- SCHEMA: filled, SGC-styled preview of trace.json (the design render) -------------------
 function schema(img){
@@ -67,21 +97,22 @@ function schema(img){
   // logoBay
   rr(M.logoBay.x,M.logoBay.y,M.logoBay.w,M.logoBay.h,8); stroke(P.blue,2);
 
-  // header panel + transport + binary dots
+  // header panel + transport
   const hd=M.header; rr(hd.panelX0,hd.panelY0,hd.panelX1-hd.panelX0,hd.panelY1-hd.panelY0,10); stroke(P.blue,2);
   text(hd.transport, hd.transportX, hd.transportY, 16, P.cyan);
-  g.fillStyle='rgba(150,190,255,.5)';
-  for(let i=0;i<70;i++){ const dx=hd.binaryX0+((i*53)%(hd.binaryX1-hd.binaryX0)); const dy=hd.binaryY0+(((i*37)%80)); if((i*7)%3) g.fillRect(dx,dy,4,4); }
+
+  // binary-dot panels (header-mid / header-tr / footer-left) — partial purple corners + dots
+  for(const z of (M.binaryDots||[])) bdots(z, P.white, D.STYLE.layers.binaryDots);
 
   // timer arc + clock/date/day
   const t=M.timer; g.strokeStyle=P.blue; g.lineWidth=8; g.beginPath(); g.arc(t.cx,t.cy,t.r,-Math.PI*0.16,Math.PI*1.16,false); g.stroke(); g.lineWidth=2;
 
-  // numbers grid + sparklines
+  // numbers grid + sparklines (wavy data line + straight baseline)
   const n=M.numbers;
   for(let r=0;r<n.rows;r++) for(let cc=0;cc<n.cols;cc++){ const x=n.x0+cc*n.colGap, y=n.y0+r*n.rowGap;
     text(String(n.values[r][cc]), x, y, n.size||22, P.white);
-    g.strokeStyle=P.dim; g.lineWidth=1.5; g.beginPath(); g.moveTo(x-6,y+n.sparkDown);
-    for(let k=0;k<=10;k++) g.lineTo(x-6+k*10, y+n.sparkDown-((k*13)%9)); g.stroke(); g.lineWidth=2; }
+    spark(n.sparkX+cc*n.sparkColGap, y+n.sparkDown, n.sparkW, n.sparkBase, r*3+cc, P.text); }
+  g.lineWidth=2;
 
   // checklist — filled panel + red bars + squares + numbers
   const cl=M.checklist; g.fillStyle=P.panel; rr(cl.x,cl.y,cl.w,cl.h,8); g.fill(); stroke(P.blue,2);
@@ -107,9 +138,13 @@ function schema(img){
   for(let i=0;i<bx.count;i++){ const y=bx.top0+i*bx.stepY; rr(bx.left,y,bx.right-bx.left,bx.h,10); stroke(P.blue,2);
     text(String(i+1), bx.left+bx.numDX, y+bx.numDY, bx.numSize||30, P.white); }
 
-  // gate — concentric rings + chevron Vs
+  // gate — concentric rings + segmented tick band + chevron Vs
   g.strokeStyle=P.white;
   for(const k of M.gate.rings){ g.lineWidth=k===1?2.5:1.2; g.strokeStyle=k===1?P.blue:'rgba(180,210,255,.7)'; g.beginPath(); g.arc(M.gate.cx,M.gate.cy,M.gate.R*k,0,7); g.stroke(); }
+  if(M.gate.ticks){ const tk=M.gate.ticks; g.strokeStyle='rgba(150,190,255,.55)'; g.lineWidth=1;
+    for(let i=0;i<tk.count;i++){ const a=i/tk.count*Math.PI*2, cx=Math.cos(a), sy=Math.sin(a);
+      g.beginPath(); g.moveTo(M.gate.cx+M.gate.R*tk.r0*cx, M.gate.cy+M.gate.R*tk.r0*sy);
+      g.lineTo(M.gate.cx+M.gate.R*tk.r1*cx, M.gate.cy+M.gate.R*tk.r1*sy); g.stroke(); } }
   g.lineWidth=2;
   for(const a of M.gate.chevrons){ const tp=M.gate.tips&&M.gate.tips[a]; if(!tp) continue; const used=!M.gate.unused.includes(a);
     const ang=a*Math.PI/180, ux=Math.cos(ang), uy=-Math.sin(ang);            // outward unit
@@ -152,23 +187,25 @@ function draw(img){
   // logoBay
   g.strokeStyle=COL.logoBay; rr(M.logoBay.x,M.logoBay.y,M.logoBay.w,M.logoBay.h,8); g.stroke();
 
-  // header — panel + transport glyphs + binary-dot panel
+  // header — panel + transport glyphs
   const hd=M.header; g.strokeStyle=COL.header;
   rr(hd.panelX0,hd.panelY0,hd.panelX1-hd.panelX0,hd.panelY1-hd.panelY0,10); g.stroke();
   g.fillStyle=COL.header; g.font='16px monospace'; g.textBaseline='top';
   g.fillText(hd.transport, hd.transportX, hd.transportY);   // transport glyphs
-  g.strokeRect(hd.binaryX0,hd.binaryY0,hd.binaryX1-hd.binaryX0,hd.binaryY1-hd.binaryY0);
+
+  // binaryDots — partial-corner dot panels (header-mid / header-tr / footer-left)
+  for(const z of (M.binaryDots||[])) bdots(z, COL.binaryDots, COL.binaryDots);
 
   // timer — arc only (the 17:56 / date / day text lives in texts[])
   const t=M.timer; g.strokeStyle=COL.timer;
   g.beginPath(); g.arc(t.cx,t.cy,t.r, -Math.PI*0.16, Math.PI*1.16, false); g.stroke();
 
-  // numbers — 2x3 grid of values + a sparkline under each
-  const n=M.numbers; g.fillStyle=COL.numbers; g.strokeStyle=COL.numbers;
+  // numbers — 2x3 grid of values + a sparkline (wavy + baseline) under each
+  const n=M.numbers; g.fillStyle=COL.numbers;
   for(let r=0;r<n.rows;r++) for(let cc=0;cc<n.cols;cc++){
     const x=n.x0+cc*n.colGap, y=n.y0+r*n.rowGap;
-    g.font=(n.size||22)+'px monospace'; g.fillText(String(n.values[r][cc]), x, y);
-    L(x-6, y+n.sparkDown, x+95, y+n.sparkDown);
+    g.font=(n.size||22)+'px monospace'; g.fillStyle=COL.numbers; g.fillText(String(n.values[r][cc]), x, y);
+    spark(n.sparkX+cc*n.sparkColGap, y+n.sparkDown, n.sparkW, n.sparkBase, r*3+cc, COL.numbers);
   }
 
   // checklist — panel + 7 rows [sq][red bar][num][sq] + right-tab divider
@@ -220,6 +257,7 @@ function draw(img){
 const render=(im)=> D.SCHEMA ? schema(D.MATCH?im:null) : draw(${RAW?'null':'im'});
 const img=new Image(); img.onload=()=>render(img); img.onerror=()=>render(null); img.src='/img';
 </script>`;
+// ╚═══════════════════════════ LLM-EDIT REGION END ═══════════════════════════╝
 
 const server = http.createServer((req, res) => {
   const p = new URL(req.url, "http://x").pathname;

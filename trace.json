@@ -11,28 +11,22 @@
   "header": { "panelX0": 187, "panelX1": 1175, "panelY0": 25, "panelY1": 150,
               "creditX": 197, "credit1Y": 42, "credit2Y": 75,
               "binaryX0": 620, "binaryX1": 1160, "binaryY0": 40, "binaryY1": 120,
-              "transportX": 405, "transportY": 118,
+              "transportX": 200, "transportY": 116,
               "destX": 1015, "destX1": 1258, "destY": 88 },
 
   "timer": { "cx": 150, "cy": 287, "r": 84,
              "clockX": 150, "clockY": 262, "dateY": 312, "dayY": 348 },
 
-  "numbers": { "x0": 103, "x1": 217, "colGap": 114, "y0": 416, "rowGap": 76,
-               "cols": 2, "rows": 3, "sparkDown": 38 },
-
-  "_status_doc": "STATUS is TEXT ONLY — there is NO bordered box (the mask shows no border). It sits centered in the left panel between the numbers grid and the checklist.",
-  "status": { "cx": 158, "y": 702, "text": "STATUS: DIALING SEQUENCE" },
+  "numbers": { "x0": 100, "colGap": 115, "y0": 415, "rowGap": 75, "size": 24, "sparkDown": 33,
+               "cols": 2, "rows": 3, "values": [[2, 8], [4, 1], [1, 4]] },
 
   "checklist": { "x": 64, "y": 733, "w": 216, "h": 268, "rows": 7,
                  "bar0Y": 765, "barStepY": 33,
                  "sqL": 84, "barL": 100, "barR": 145, "numX": 168, "sqR": 250, "rightTabX": 275 },
 
-  "footer": { "lst1X": 300, "lst2X": 1016, "lstY": 812,
-              "readout": { "x": 332, "y": 888, "w": 805, "h": 113 },
-              "authLabelX": 290, "authY": 1028,
+  "footer": { "readout": { "x": 332, "y": 888, "w": 805, "h": 113 },
               "authCellX0": 628, "authCellX1": 1210, "authCells": 15, "dashCell": 6,
-              "authText": "778927-57892387",
-              "userX": 1245, "userY": 1008, "sysY": 1036 },
+              "authText": "778927-57892387", "authY": 1029 },
 
   "boxes": { "left": 1238, "right": 1367, "top0": 165, "stepY": 117.5, "h": 101, "count": 7,
              "numDX": -30, "numDY": 86,
@@ -58,18 +52,19 @@
   ],
   "lockOrder": [50, 10, 330, 210, 170, 130, 90],
 
+  "_texts_doc": "All standalone HUD text labels. x,y = measured TOP-LEFT anchor (px), size = font px chosen so cap-height matches the mask, align=left. Positional numerics (numbers grid, box numbers, checklist numbers, auth digits) are drawn by their own blocks, not here.",
   "texts": [
-    { "t": "David Arnold arr. Joel Goldsmith", "x": 197, "y": 42, "align": "left" },
-    { "t": "Stargate SG-1: Main Title", "x": 197, "y": 75, "align": "left" },
-    { "t": "DESTINATION", "x": 1015, "y": 88, "align": "left" },
-    { "t": "17:56", "x": 150, "y": 262, "align": "center", "size": 34 },
-    { "t": "29/03/20", "x": 150, "y": 312, "align": "center" },
-    { "t": "29", "x": 150, "y": 348, "align": "center", "size": 26 },
-    { "t": "STATUS: DIALING SEQUENCE", "x": 158, "y": 702, "align": "center" },
-    { "t": "LST CODE # 1", "x": 300, "y": 812, "align": "left" },
-    { "t": "LST CODE # 2", "x": 1016, "y": 812, "align": "left" },
-    { "t": "AUTHORIZATION CODE:", "x": 290, "y": 1028, "align": "left" },
-    { "t": "USER: SGT. W HARRIMAN", "x": 1245, "y": 1008, "align": "left" },
-    { "t": "SYS: NOMINAL", "x": 1245, "y": 1036, "align": "left" }
+    { "id": "credit1", "t": "David Arnold arr. Joel Goldsmith", "x": 200, "y": 37, "size": 19 },
+    { "id": "credit2", "t": "Stargate SG-1: Main Title", "x": 200, "y": 65, "size": 19 },
+    { "id": "destination", "t": "DESTINATION", "x": 1112, "y": 73, "size": 28 },
+    { "id": "clock", "t": "17:56", "x": 102, "y": 267, "size": 33 },
+    { "id": "date", "t": "29/03/20", "x": 102, "y": 313, "size": 24 },
+    { "id": "day", "t": "29", "x": 138, "y": 344, "size": 28 },
+    { "id": "status", "t": "STATUS: DIALING SEQUENCE", "x": 42, "y": 702, "size": 18 },
+    { "id": "lst1", "t": "LST CODE # 1", "x": 307, "y": 809, "size": 26 },
+    { "id": "lst2", "t": "LST CODE # 2", "x": 1016, "y": 809, "size": 26 },
+    { "id": "authLabel", "t": "AUTHORIZATION CODE:", "x": 292, "y": 1041, "size": 21 },
+    { "id": "user", "t": "USER: SGT. W HARRIMAN", "x": 1245, "y": 1021, "size": 17 },
+    { "id": "sys", "t": "SYS: NOMINAL", "x": 1245, "y": 1046, "size": 17 }
   ]
 }

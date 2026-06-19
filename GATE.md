@@ -55,20 +55,29 @@ turns within them.
 - Workflow: clean `tmp/` (keep `target.png`) → `capture` → `diff`/`zoom`/`probe` → adjust
   `layout.json`/`hud.js` → repeat.
 
-### Mask-based measurement (the precise source — USE THIS for layout numbers)
-`tmp/target.png` is a dim, CRT-noised photo of the screen; measuring it directly is unreliable.
-`tmp/vector.svg` is a **binary trace** of the same frame (one `evenodd` black-fill path, 1491×1074)
-— rendered it is crisp black HUD line-art on white, with NO navy/noise/anti-alias haze. It is the
-authoritative geometry source.
-- `node scripts/mask.js` → `tmp/mask.png` (black art on white, for viewing).
-- `node scripts/mask.js inv` → `tmp/mask_inv.png` (white art on black — feed THIS to `probe.js`,
-  which keys on `lum>60`). All §2 numbers below were measured from `mask_inv.png`.
-- `node scripts/mask.js over` → `tmp/mask_over.png` (mask dimmed + `trace.json` vectors on top).
-- `node scripts/trace.js` → `tmp/trace.png` — draws the whole hand-authored vector model from
-  `trace.json` over the (brightened) target, each HUD layer a distinct color + legend. The
-  pre-code VALIDATION artifact: confirm every line/path before writing `layout.json`/`hud.js`.
-- `node scripts/circuits.js` → `tmp/circuits.png` — paints the ACTUAL circuit pixels (yellow)
-  next to the `trace.json` routing (red) so each trace can be followed and solved one by one.
+### Sources & tmp layout
+- **`source/`** holds the inputs: `target.png` (the dim CRT photo — the match target) and
+  **`source/mask.png`** (a crisp binary trace of the same frame: black HUD line-art on white, no
+  navy/noise/anti-alias haze — the authoritative geometry source). Plus the reference webp/svg.
+- **`tmp/<script>/…`** holds outputs, one subfolder per script, filenames carrying their params.
+  Nothing else lives loose in `tmp/`.
+
+### Mask-based measurement (USE THIS for layout numbers)
+Measure `source/mask.png`, not the photo. All §2 numbers were read from it.
+- `node scripts/probe.js row <y>|col <x>|px <x> <y> mask.png` — auto-inverts when the filename
+  contains "mask" (white-on-black internally) so bright = HUD line. Default file = target.png.
+- `node scripts/grid.js` → `tmp/grid/grid.png` — mask + a faint 100px coordinate ruler (tick
+  crosses + tiny labels; NO bold gridlines — those got misread as geometry).
+  `node scripts/grid.js tiles [cols rows z]` → `tmp/grid/tile_r{r}_c{c}.png` labeled tiles for
+  systematic tile-by-tile reading (read coordinates straight off the ruler, never guess an area).
+- `node scripts/zoom.js <file> [x y w h] [z]` → `tmp/zoom/<stem>_x_y_w_h_z.png` (params in name).
+  `<file>` resolves from `source/` then `tmp/` (tmp may include a subfolder, e.g. `mask/over.png`).
+- `node scripts/trace.js [target|mask|raw]` → `tmp/trace/trace_<arg>.png` — draws the whole vector
+  model from `trace.json` over the brightened target (default) OR the dimmed crisp **mask**, each
+  HUD layer a distinct color + legend. The pre-code VALIDATION artifact: confirm every line/path
+  before writing `layout.json`/`hud.js`. (`raw` = on black.)
+
+(`mask.js` and `circuits.js` were removed — folded into `probe.js` auto-invert and `trace.js mask`.)
 
 ### `trace.json` (the validated model — single source of truth)
 All HUD geometry in **target pixels (1491×1074)**, measured from the mask. `trace.js` renders it;
@@ -109,6 +118,15 @@ All HUD geometry in **target pixels (1491×1074)**, measured from the mask. `tra
   when active). AUTHORIZATION CODE segmented cells x0 628 → x1 1210 (15 cells, pitch ≈38.8, the 7th
   is the `-` gap), digit baseline y≈1028; label "AUTHORIZATION CODE:" at x≈290. LST CODE #1 x≈300,
   #2 x≈1016, y≈812. USER: / SYS: right block at x≈1245, y 1008 / 1036.
+
+### Text anchors (measured TOP-LEFT px + font size; all in `trace.json` `texts[]`, left-aligned)
+credit1 "David Arnold arr. Joel Goldsmith" (200,37 s19) · credit2 "Stargate SG-1: Main Title"
+(200,65 s19) · DESTINATION (1112,73 s28) · clock 17:56 (102,267 s33) · date 29/03/20 (102,313 s24)
+· day 29 (138,344 s28) · STATUS: DIALING SEQUENCE (42,702 s18) · LST CODE # 1 (307,809 s26) ·
+LST CODE # 2 (1016,809 s26) · AUTHORIZATION CODE: (292,1041 s21) · USER: SGT. W HARRIMAN
+(1245,1021 s17) · SYS: NOMINAL (1245,1046 s17). Transport ◀◀▶▶ at (200,116). Numbers grid 2×3
+values [[2,8],[4,1],[1,4]] at cols x 100/215, rows y 415/490/565, size 24, sparkline +33 below each.
+(The SGC font is a wide custom face; monospace in the trace overlay reads a bit wider — anchors match.)
 
 ### Circuit anchors (the trace network — all in `trace.json` as explicit polylines)
 Right boxes 1–3 leave the box LEFT edge (box1 = single shallow diagonal to its tip; boxes 2–3 =

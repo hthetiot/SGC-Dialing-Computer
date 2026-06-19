@@ -11,7 +11,10 @@ let svg = null, ringGroups = [];
 export async function mountGate(host, base = "./assets/gate.svg") {
   // dist inlines the SVG as a global (self-contained build); dev fetches the file.
   const txt = window.__SGC_GATE_SVG__ || (await fetch(base).then((r) => r.text()));
-  host.innerHTML = txt;
+  // Strip the XML prolog + DOCTYPE: its internal-subset close "]>" leaks as a visible text node
+  // when assigned via innerHTML. Start at the <svg> root.
+  const i = txt.indexOf("<svg");
+  host.innerHTML = i >= 0 ? txt.slice(i) : txt;
   svg = host.querySelector("svg");
   svg.removeAttribute("width"); svg.removeAttribute("height");
   svg.style.position = "absolute"; svg.style.overflow = "visible";

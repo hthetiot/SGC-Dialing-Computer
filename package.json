@@ -10,6 +10,7 @@
     "preview": "SERVE_DIST=1 bun run scripts/serve.js",
     "build": "bun run scripts/build.js",
 
+    "layout": "node -e \"require('fs').copyFileSync('source/trace.json','public/assets/layout.json')\"",
     "clean": "node scripts/clean.js",
     "trace": "node scripts/trace.js",
     "trace:mask": "node scripts/trace.js mask",

@@ -14,8 +14,8 @@ Node (works with `node` / `npm` / `bun`). Inputs live in `source/`, every output
 ## The single source of truth: `source/trace.json`
 Every HUD element measured in **target pixels**, as a keyed block:
 `frame, rail, logoBay, header, timer, numbers, checklist, footer, boxes, gate, circuit, texts`.
-This is the "figma" — the app's `public/src/layout.json` is derived from it (normalize x/1491,
-y/1074) once the preview matches.
+This is the "figma" — the app's `public/assets/layout.json` is derived from it (a copy of
+`source/trace.json`) once the preview matches.
 
 ## The loop
 ```

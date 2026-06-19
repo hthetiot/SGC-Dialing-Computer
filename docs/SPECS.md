@@ -102,7 +102,7 @@ Measure `source/mask.png`, not the photo. All §2 numbers were read from it.
 All HUD geometry in **target pixels (1491×1074)**, measured from the mask: every element is a
 keyed block (`frame, rail, logoBay, header, timer, numbers, checklist, footer, boxes, gate,
 circuit, texts`). `trace.js schema` renders it filled; `match` checks the fit. Once the preview
-matches, `public/src/layout.json` is derived from it (normalize by /1491 x, /1074 y).
+matches, `public/assets/layout.json` is derived from it (currently a copy of `source/trace.json`).
 
 ---
 
@@ -314,7 +314,9 @@ there is no separate glyphs.js.
 public/
   index.html            dev entry: jsdelivr import map, gate-host/hud/logo, CRT/scanline, PWA meta
   manifest.webmanifest, sw.js, icons/   (icons generated from the gate SVG; maskable + any)
-  assets/gate.svg       base gate (entities resolved)
+  assets/
+    gate.svg            base gate (entities resolved)
+    layout.json         figma model (anchors + circuit data + palette), copy of source/trace.json
   src/
     addresses.js        39-glyph ring order + canonical addresses
     screen.js           responsive mapper: faithful at 1.25:1, edge-anchored otherwise
@@ -327,7 +329,6 @@ public/
     debug.js            lil-gui panel — HIDDEN by default, toggled by clicking the SGC logo
                         emblem (logo bay). Top-right when shown.
     main.js             bootstrap, input, auto-demo, render loop
-    layout.json         measured anchors (normalized fractions) + circuit data + palette
 scripts/{dev.js, serve.js, build.js}
 dist/index.html          built, self-contained (inlines layout+SVG+bundle) — THE runnable file
 ```

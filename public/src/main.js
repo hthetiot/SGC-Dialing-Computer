@@ -1,0 +1,84 @@
+// main.js — bootstrap, input, auto-demo, render loop. Ties the recolored gate SVG, the 2D HUD
+// canvas, and the Three.js logo emblem together; drives them from the dialer state machine.
+//
+// Controls: Space = dial/abort · M = toggle mode · A = incoming (Apophis) · click logo = debug.
+// Deep-link ?state=idle|dialing|dialed|kawoosh|active forces a phase (used by scripts/capture.js).
+
+import { makeScreen } from "./screen.js";
+import { drawHud } from "./hud.js";
+import { mountGate, setLayout as gateSetLayout, setRotation as gateSetRotation } from "./gate.js";
+import { initLogo, resizeLogo, renderLogo } from "./logo.js";
+import { createDialer } from "./dialer.js";
+import { initDebug } from "./debug.js";
+import { sfx } from "./sound.js";
+
+const hud = document.getElementById("hud"), g = hud.getContext("2d");
+const logoCanvas = document.getElementById("logo"), host = document.getElementById("gate-host");
+
+let L, dialer, dbg, dpr = 1, lastLock = 0, lastPhase = "idle", demoAt = 0;
+
+async function boot() {
+  L = await fetch("./src/layout.json").then((r) => r.json());
+  try { await mountGate(host); } catch (e) { console.warn("gate svg:", e); }
+  initLogo(logoCanvas);
+  dialer = createDialer();
+  dbg = await initDebug(dialer);
+
+  const q = new URLSearchParams(location.search);
+  const forced = q.get("state");
+  if (forced) dialer.force(forced);
+  if (q.get("debug")) dbg.toggle();
+
+  addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    if (e.code === "Space") { e.preventDefault(); (dialer.phase === "idle" || dialer.phase === "active") ? dialer.start(dialer.mode) : dialer.abort(); }
+    else if (k === "m") dialer.mode = dialer.mode === "outgoing" ? "incoming" : "outgoing";
+    else if (k === "a") { dialer.mode = "incoming"; dialer.start("incoming"); }
+    else if (k === "d") dbg.toggle();
+  });
+  // click the SGC logo emblem -> debug panel. The #logo canvas is pointer-events:none, so hit-test
+  // the logo-bay rect at the document level instead of relying on canvas layering.
+  addEventListener("pointerdown", (e) => {
+    const M = makeScreen(innerWidth, innerHeight), lb = L.logoBay;
+    if (e.clientX >= M.x(lb.x) && e.clientX <= M.x(lb.x + lb.w) && e.clientY >= M.y(lb.y) && e.clientY <= M.y(lb.y + lb.h)) dbg.toggle();
+  });
+  addEventListener("resize", resize);
+  resize();
+  document.getElementById("boot")?.remove();
+  if (!forced) demoAt = performance.now() + 2500;   // auto-demo: kick off a dial shortly after load
+  requestAnimationFrame(loop);
+}
+
+function resize() {
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  const vw = innerWidth, vh = innerHeight;
+  hud.width = vw * dpr; hud.height = vh * dpr; hud.style.width = vw + "px"; hud.style.height = vh + "px";
+  const M = makeScreen(vw, vh);
+  const lb = L.logoBay, x0 = M.x(lb.x), y0 = M.y(lb.y), x1 = M.x(lb.x + lb.w), y1 = M.y(lb.y + lb.h);
+  logoCanvas.style.left = x0 + "px"; logoCanvas.style.top = y0 + "px";
+  logoCanvas.style.width = (x1 - x0) + "px"; logoCanvas.style.height = (y1 - y0) + "px";
+  resizeLogo(x1 - x0, y1 - y0);
+  const gp = M.gate(L); gateSetLayout(gp.cx, gp.cy, gp.R);
+}
+
+function loop() {
+  const now = performance.now();
+  if (demoAt && now > demoAt) { dialer.start("outgoing"); demoAt = 0; }
+  dialer.update(now);
+  const st = dialer.state(now);
+
+  if (st.lockedCount > lastLock) sfx.chevron();
+  if (st.phase === "kawoosh" && lastPhase !== "kawoosh") sfx.kawoosh();
+  lastLock = st.lockedCount; lastPhase = st.phase;
+
+  const vw = innerWidth, vh = innerHeight, M = makeScreen(vw, vh);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, vw, vh);                 // transparent — lets the gate SVG (below) show through
+  drawHud(g, M, L, st);
+
+  gateSetRotation(st.ringDeg);
+  renderLogo(now / 1000);
+  requestAnimationFrame(loop);
+}
+
+boot();

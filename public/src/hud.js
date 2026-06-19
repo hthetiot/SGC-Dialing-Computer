@@ -58,10 +58,11 @@ export function drawHud(g, M, L, st) {
     const cw = z.w / z.cols, ch = z.h / z.rows, seed = z.seed || 0;
     const horiz = z.cols >= z.rows, span = horiz ? z.cols : z.rows;
     const sweep = ((st.t || 0) / 32) % (span + 8) - 4;       // scan position along the long axis
+    const dense = z.cols <= 2;                                // narrow columns read as a near-full stack
     for (let j = 0; j < z.rows; j++) for (let i = 0; i < z.cols; i++) {
-      if (((i * 5 + j * 11 + seed * 3) % 9) >= 2) continue;  // sparse scattered field (coprime hash)
+      if (((i * 5 + j * 11 + seed * 3) % (dense ? 5 : 9)) >= (dense ? 4 : 2)) continue;
       const near = Math.abs((horiz ? i : j) - sweep) < 1.2;
-      const blue = ((i * 3 + j * 5 + seed) % 5) === 0;
+      const blue = ((i * 3 + j * 7 + seed) % 5) === 0;
       g.fillStyle = near ? "#e2f2ff" : blue ? P.blue : "rgba(205,225,255,.5)";
       const d = (near ? 4 : 3) * sc;
       g.fillRect(X(z.x + i * cw + cw / 2) - d / 2, Y(z.y + j * ch + ch / 2) - d / 2, d, d);

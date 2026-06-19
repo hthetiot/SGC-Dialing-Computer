@@ -15,13 +15,17 @@ import { sfx } from "./sound.js";
 const hud = document.getElementById("hud"), g = hud.getContext("2d");
 const logoCanvas = document.getElementById("logo"), host = document.getElementById("gate-host");
 
-let L, dialer, dbg, dpr = 1, lastLock = 0, lastPhase = "idle", demoAt = 0;
+let L, dialer, dbg, dpr = 1, demoAt = 0;
 
 async function boot() {
   L = await fetch("./src/layout.json").then((r) => r.json());
   try { await mountGate(host); } catch (e) { console.warn("gate svg:", e); }
   initLogo(logoCanvas);
   dialer = createDialer();
+  dialer.onLock = (n) => {                 // SFX hooks fired by the state machine
+    if (n === -1) sfx.kawoosh(); else if (n === -2) sfx.wormhole();
+    else if (n > 0) { sfx.chevron(); if (n === 7) sfx.lock(); }
+  };
   dbg = await initDebug(dialer);
 
   const q = new URLSearchParams(location.search);
@@ -31,9 +35,14 @@ async function boot() {
 
   addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
-    if (e.code === "Space") { e.preventDefault(); (dialer.phase === "idle" || dialer.phase === "active") ? dialer.start(dialer.mode) : dialer.abort(); }
+    if (e.code === "Space") { e.preventDefault(); (dialer.phase === "idle" || dialer.phase === "active") ? dialer.start() : dialer.abort(); }
+    else if (/^[0-9]$/.test(e.key)) { dialer.digit(e.key); sfx.key(); }       // build a glyph number 1..39
+    else if (e.key === "Enter") { dialer.enter(); sfx.key(); }                // commit the glyph
+    else if (e.key === "Backspace") { e.preventDefault(); dialer.back(); }
     else if (k === "m") dialer.mode = dialer.mode === "outgoing" ? "incoming" : "outgoing";
-    else if (k === "a") { dialer.mode = "incoming"; dialer.start("incoming"); }
+    else if (k === "a") { dialer.mode = "incoming"; dialer.start(); }
+    else if (k === "f") dialer.setFast(!dialer.fast);                         // fast dial
+    else if (k === "c") dialer.clearSeq();
     else if (k === "d") dbg.toggle();
   });
   // click the SGC logo emblem -> debug panel. The #logo canvas is pointer-events:none, so hit-test
@@ -66,11 +75,6 @@ function loop() {
   if (demoAt && now > demoAt) { dialer.start("outgoing"); demoAt = 0; }
   dialer.update(now);
   const st = dialer.state(now);
-
-  if (st.lockedCount > lastLock) sfx.chevron();
-  if (st.phase === "kawoosh" && lastPhase !== "kawoosh") sfx.kawoosh();
-  lastLock = st.lockedCount; lastPhase = st.phase;
-
   const vw = innerWidth, vh = innerHeight, M = makeScreen(vw, vh);
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, vw, vh);                 // transparent — lets the gate SVG (below) show through

@@ -17,13 +17,16 @@ export async function mountGate(host, base = "./assets/gate.svg") {
 
   // recolor: cyan line-art, glyphs faint, ring circles brighter, housings pale
   const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+  // recolor: cyan line-art. Constellation glyphs stay ON the ring (SPECS §3 project choice — they
+  // differ from target.png's empty tick-band by design); circles + delimiter band carry the form.
   style.textContent = `
     svg * { vector-effect: non-scaling-stroke; }
-    #Main_gate_parts circle { stroke:#2f6bff; stroke-width:2; fill:none; filter:drop-shadow(0 0 2px rgba(60,120,255,.6)); }
-    #Symbols path, #Symbols polygon { fill:#9fd0ff; stroke:#9fd0ff; stroke-width:.3; }
-    #Inner_Chevron_Delimiters line, #Outer_Chevron_Delimiters line { stroke:#3f7bd0; opacity:.55; }
-    #Chevron_Locks path, #Chevron_Locks polygon, #Chevron_Locks polyline { fill:#cfe4ff; stroke:#6fa8e6; stroke-width:.6; }
-    #Alternative_Detailing line { stroke:#2c5aa0; opacity:.4; }`;
+    #Main_gate_parts circle { stroke:#3f7bd0; stroke-width:1.6; fill:none; filter:drop-shadow(0 0 2px rgba(60,120,255,.5)); }
+    #Symbols path, #Symbols polygon { fill:#9fd0ff; stroke:none; opacity:.62; }
+    #Inner_Chevron_Delimiters line { stroke:#cfe0ff; opacity:.6; }
+    #Outer_Chevron_Delimiters line { stroke:#aecdf0; opacity:.45; }
+    #Chevron_Locks path, #Chevron_Locks polygon, #Chevron_Locks polyline { fill:#eef4ff; stroke:#9fc0e8; stroke-width:.5; }
+    #Alternative_Detailing line { stroke:#4a78b0; opacity:.45; }`;
   svg.insertBefore(style, svg.firstChild);
 
   ringGroups = RING_GROUPS.map((id) => svg.getElementById(id)).filter(Boolean);
@@ -43,4 +46,25 @@ export function setLayout(cx, cy, R) {
 export function setRotation(deg) {
   const tf = `rotate(${deg} ${VB.cx} ${VB.cy})`;
   for (const g of ringGroups) g.setAttribute("transform", tf);
+}
+
+// extract a glyph (by SPECS glyph name, e.g. "Origin") as a Path2D + bbox in gate-svg units, so the
+// HUD can draw it filled in a result box or big as the hero glyph. Cached.
+const glyphCache = {};
+export function getGlyph(name) {
+  if (name in glyphCache) return glyphCache[name];
+  const el = svg && svg.getElementById(name);
+  if (!el) return (glyphCache[name] = null);
+  const path = new Path2D();
+  el.querySelectorAll("path").forEach((n) => { const d = n.getAttribute("d"); if (d) try { path.addPath(new Path2D(d)); } catch { /* skip */ } });
+  el.querySelectorAll("polygon, polyline").forEach((n) => {
+    const nums = (n.getAttribute("points") || "").trim().split(/[\s,]+/).map(Number);
+    if (nums.length < 4) return;
+    let d = `M${nums[0]},${nums[1]}`;
+    for (let i = 2; i + 1 < nums.length; i += 2) d += `L${nums[i]},${nums[i + 1]}`;
+    if (n.tagName.toLowerCase() === "polygon") d += "Z";
+    try { path.addPath(new Path2D(d)); } catch { /* skip */ }
+  });
+  let bb; try { bb = el.getBBox(); } catch { bb = { x: 0, y: 0, width: 1, height: 1 }; }
+  return (glyphCache[name] = { path, x: bb.x, y: bb.y, w: bb.width || 1, h: bb.height || 1 });
 }

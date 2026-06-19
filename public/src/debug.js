@@ -1,19 +1,30 @@
-// debug.js — lil-gui panel, HIDDEN by default, toggled by clicking the SGC logo emblem.
-// Lets you drive the phase/mode directly. Loaded lazily so a CDN hiccup never breaks the app.
+// debug.js — lil-gui panel, HIDDEN by default, toggled by clicking the SGC logo emblem (or D key).
+// Drive the phase/mode, fast-dial, address presets, and manual-entry directly. Loaded lazily so a
+// CDN hiccup never breaks the app.
+
+import { ADDRESSES } from "./addresses.js";
 
 export async function initDebug(dialer) {
   let gui = null, visible = false;
-  const ctrl = { phase: "auto", mode: dialer.mode, dial: () => dialer.start(dialer.mode), abort: () => dialer.abort() };
+  const ctrl = {
+    phase: "auto", mode: dialer.mode, fast: dialer.fast,
+    dial: () => dialer.start(), abort: () => dialer.abort(), clear: () => dialer.clearSeq(),
+    Abydos: () => dialer.start(ADDRESSES.Abydos), Apophis: () => dialer.start(ADDRESSES.Apophis),
+  };
   try {
     const { GUI } = await import("lil-gui");
     gui = new GUI({ title: "SGC DEBUG" });
-    gui.domElement.style.position = "fixed"; gui.domElement.style.top = "8px"; gui.domElement.style.right = "8px"; gui.domElement.style.zIndex = 20;
+    Object.assign(gui.domElement.style, { position: "fixed", top: "8px", right: "8px", zIndex: 20, display: "none" });
     gui.add(ctrl, "phase", ["auto", "idle", "dialing", "dialed", "kawoosh", "active"]).onChange((v) => v === "auto" ? dialer.reset() : dialer.force(v));
     gui.add(ctrl, "mode", ["outgoing", "incoming"]).onChange((v) => (dialer.mode = v));
-    gui.add(ctrl, "dial"); gui.add(ctrl, "abort");
-    gui.domElement.style.display = "none";
-  } catch { /* lil-gui unavailable — toggle is a no-op */ }
-  return {
-    toggle() { if (!gui) return; visible = !visible; gui.domElement.style.display = visible ? "" : "none"; },
-  };
+    gui.add(ctrl, "fast").name("fast dial").onChange((v) => dialer.setFast(v));
+    gui.add(ctrl, "dial").name("DIAL (Space)");
+    gui.add(ctrl, "abort").name("ABORT");
+    const a = gui.addFolder("address");
+    a.add(ctrl, "Abydos").name("dial Abydos");
+    a.add(ctrl, "Apophis").name("dial Apophis");
+    a.add(ctrl, "clear").name("clear entry (C)");
+    gui.add({ help: "type 1-39 + Enter per glyph" }, "help").disable();
+  } catch (e) { console.warn("lil-gui:", e); }
+  return { toggle() { if (!gui) return; visible = !visible; gui.domElement.style.display = visible ? "" : "none"; } };
 }

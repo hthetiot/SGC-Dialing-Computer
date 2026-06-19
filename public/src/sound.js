@@ -14,8 +14,17 @@ function blip(freq, dur, type = "sine", gain = 0.06) {
 }
 
 export const sfx = {
+  key() { blip(660, 0.05, "square", 0.03); },
   chevron() { blip(180, 0.18, "square", 0.05); blip(360, 0.12, "sine", 0.04); },
-  lock() { blip(90, 0.3, "sawtooth", 0.06); },
+  lock() { blip(90, 0.3, "sawtooth", 0.06); blip(140, 0.25, "square", 0.04); },
+  wormhole() {
+    const c = ensure(); if (c.state === "suspended") c.resume();
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(120, c.currentTime);
+    o.frequency.exponentialRampToValueAtTime(420, c.currentTime + 0.5);
+    g.gain.setValueAtTime(0.001, c.currentTime); g.gain.linearRampToValueAtTime(0.1, c.currentTime + 0.2); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 1.2);
+    o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 1.2);
+  },
   kawoosh() {
     const c = ensure(); if (c.state === "suspended") c.resume();
     const o = c.createOscillator(), g = c.createGain();

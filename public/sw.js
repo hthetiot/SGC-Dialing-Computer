@@ -16,7 +16,8 @@ const SHELL = [
   "./src/logo.js",
   "./src/sound.js",
   "./src/addresses.js",
-  "./src/layout.json",
+  "./assets/gate.svg",
+  "./assets/layout.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
 ];

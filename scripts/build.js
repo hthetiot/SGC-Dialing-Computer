@@ -39,7 +39,7 @@ async function main() {
   const bundle = await out.outputs[0].text();
 
   // 2. Inline assets.
-  const layoutJSON = await readFile(PUB + "src/layout.json", "utf8");
+  const layoutJSON = await readFile(PUB + "assets/layout.json", "utf8");
   const gateSVG = await readFile(PUB + "assets/gate.svg", "utf8");
 
   // 3. Compose index.html from the dev template, swapping the module script for the

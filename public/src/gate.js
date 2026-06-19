@@ -45,8 +45,18 @@ export function setLayout(cx, cy, R) {
 }
 
 export function setRotation(deg) {
+  if (!Number.isFinite(deg)) return;     // never write rotate(NaN ...) — would throw on the <g>
   const tf = `rotate(${deg} ${VB.cx} ${VB.cy})`;
   for (const g of ringGroups) g.setAttribute("transform", tf);
+}
+
+// angle (deg, SVG y-down convention) of a glyph's centre about the gate centre — used by the dialer
+// to rotate the ring so a dialed glyph lands under its locking chevron.
+export function glyphAngle(name) {
+  const gl = getGlyph(name);
+  if (!gl || gl._degenerate) return null;
+  const a = (Math.atan2((gl.y + gl.h / 2) - VB.cy, (gl.x + gl.w / 2) - VB.cx) * 180) / Math.PI;
+  return Number.isFinite(a) ? a : null;
 }
 
 // extract a glyph (by SPECS glyph name, e.g. "Origin") as a Path2D + bbox in gate-svg units, so the
@@ -66,6 +76,11 @@ export function getGlyph(name) {
     if (n.tagName.toLowerCase() === "polygon") d += "Z";
     try { path.addPath(new Path2D(d)); } catch { /* skip */ }
   });
-  let bb; try { bb = el.getBBox(); } catch { bb = { x: 0, y: 0, width: 1, height: 1 }; }
+  let bb; try { bb = el.getBBox(); } catch { bb = null; }
+  // Before layout, getBBox can return NaN/empty — return a transient (uncached) box so a later,
+  // laid-out call recomputes instead of poisoning the cache (and any angle) with NaN.
+  if (!bb || !Number.isFinite(bb.x) || !Number.isFinite(bb.width) || bb.width === 0) {
+    return { path, x: 0, y: 0, w: 1, h: 1, _degenerate: true };
+  }
   return (glyphCache[name] = { path, x: bb.x, y: bb.y, w: bb.width || 1, h: bb.height || 1 });
 }

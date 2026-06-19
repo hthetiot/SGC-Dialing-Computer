@@ -6,9 +6,10 @@
 
 import { makeScreen } from "./screen.js";
 import { drawHud } from "./hud.js";
-import { mountGate, setLayout as gateSetLayout, setRotation as gateSetRotation } from "./gate.js";
+import { mountGate, setLayout as gateSetLayout, setRotation as gateSetRotation, glyphAngle } from "./gate.js";
 import { initLogo, resizeLogo, renderLogo } from "./logo.js";
 import { createDialer } from "./dialer.js";
+import { GLYPHS } from "./addresses.js";
 import { initDebug } from "./debug.js";
 import { sfx } from "./sound.js";
 
@@ -20,9 +21,12 @@ let L, dialer, dbg, dpr = 1, demoAt = 0;
 async function boot() {
   // dist inlines layout as a global (self-contained build); dev fetches the file.
   L = window.__SGC_LAYOUT__ || (await fetch("./assets/layout.json").then((r) => r.json()));
-  try { await mountGate(host); } catch (e) { console.warn("gate svg:", e); }
+  let gateReady = false;
+  try { await mountGate(host); gateReady = true; } catch (e) { console.warn("gate svg:", e); }
   initLogo(logoCanvas);
   dialer = createDialer();
+  // feed the dialer each glyph's ring angle so it can rotate the exact glyph under its chevron
+  if (gateReady) dialer.setGlyphAngle((idx) => glyphAngle(GLYPHS[idx]));
   dialer.onLock = (n) => {                 // SFX hooks fired by the state machine
     if (n === -1) sfx.kawoosh(); else if (n === -2) sfx.wormhole();
     else if (n > 0) { sfx.chevron(); if (n === 7) sfx.lock(); }
@@ -30,8 +34,9 @@ async function boot() {
   dbg = await initDebug(dialer);
 
   const q = new URLSearchParams(location.search);
-  const forced = q.get("state");
-  if (forced) dialer.force(forced);
+  const forced = q.get("state"), step = q.get("step");
+  if (forced === "dialing" && step != null) dialer.freezeStep(+step);   // ?state=dialing&step=N
+  else if (forced) dialer.force(forced);
   if (q.get("debug")) dbg.toggle();
 
   addEventListener("keydown", (e) => {

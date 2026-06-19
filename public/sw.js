@@ -1,7 +1,7 @@
 // sw.js — Service worker for offline-capable PWA.
 // Caches the app shell on install and serves cache-first, falling back to network.
 
-const CACHE = "sgc-dialer-v1";
+const CACHE = "sgc-dialer-v2";   // bump to evict the stale precache (old ./src/layout.json path)
 const SHELL = [
   "./",
   "./index.html",

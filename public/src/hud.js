@@ -84,9 +84,10 @@ export function drawHud(g, M, L, st) {
     if (litRow) text("OK", cl.sqR + 14, cy - 8, 13, P.white);   // in the right-tab gap, clear of the box
   }
 
-  // footer — readout (countdown when active) + segmented auth cells
+  // footer — readout: 38-min countdown when active, else the live dial clock (sec.ms) while dialing
   const ft = L.footer; rect(ft.readout.x, ft.readout.y, ft.readout.w, ft.readout.h, 8); stroke(P.blue, 2);
   if (st.countdown) text(st.countdown, ft.readout.x + 24, ft.readout.y + ft.readout.h / 2 - 18, 40, st.countdown.startsWith("00:") ? P.red : P.cyan);
+  else if (st.dialClock) text(st.dialClock, ft.readout.x + 24, ft.readout.y + ft.readout.h / 2 - 18, 40, P.cyan);
   { const a = ft.auth, digits = a.text.replace("-", ""); let di = 0; g.strokeStyle = P.blue; g.lineWidth = lw(1.5);
     const grp = (gx, cnt) => { for (let i = 0; i < cnt; i++) { const cx = gx + i * a.cellW, x0 = X(cx); g.strokeRect(x0, Y(a.cellTop), X(cx + a.cellW) - x0, Y(a.cellTop + a.cellH) - Y(a.cellTop)); text(digits[di++] || "", cx + a.cellW / 2 - a.size * 0.28, a.digitTop, a.size, P.white); } };
     grp(a.g1x, a.g1n); grp(a.g2x, a.g2n); text("-", a.dashX, a.digitTop, a.size, P.white); }

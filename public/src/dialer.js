@@ -142,7 +142,7 @@ export function createDialer() {
   function countdown(now) {
     if (phase !== "active") return null;
     const ms = Math.max(0, endAt - now);
-    return `${pad(Math.floor(ms / 60000))}:${pad(Math.floor(ms / 1000) % 60)}`;
+    return `${pad(Math.floor(ms / 60000))}:${pad(Math.floor(ms / 1000) % 60)}.${String(Math.floor(ms % 1000)).padStart(3, "0")}`;
   }
 
   return {

@@ -6,10 +6,10 @@
 
 import { makeScreen } from "./screen.js";
 import { drawHud } from "./hud.js";
-import { mountGate, setLayout as gateSetLayout, setRotation as gateSetRotation, glyphAngle } from "./gate.js";
+import { mountGate, setLayout as gateSetLayout, setRotation as gateSetRotation, setLitChevrons as gateSetLit, glyphAngle } from "./gate.js";
 import { initLogo, resizeLogo, renderLogo } from "./logo.js";
 import { createDialer } from "./dialer.js";
-import { GLYPHS } from "./addresses.js";
+import { GLYPHS, LOCK_ORDER } from "./addresses.js";
 import { initDebug } from "./debug.js";
 import { sfx } from "./sound.js";
 
@@ -87,6 +87,7 @@ function loop() {
   drawHud(g, M, L, st);
 
   gateSetRotation(st.ringDeg);
+  gateSetLit(LOCK_ORDER.slice(0, st.lockedCount || 0));   // turn engaged chevrons red on the SVG
   renderLogo(now / 1000);
   requestAnimationFrame(loop);
 }

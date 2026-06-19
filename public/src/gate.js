@@ -50,6 +50,45 @@ export function setRotation(deg) {
   for (const g of ringGroups) g.setAttribute("transform", tf);
 }
 
+// ── engaged-chevron recolour: turn the real SVG chevron RED when its clamp locks (active/dialing) ──
+const CHEV_ANGLES = [90, 50, 10, 330, 290, 250, 210, 170, 130];
+let chevrons = null;   // [{ els:[path,polygon,polyline], ang }] — the 9 clamps in Chevron_Lock_1
+const angDist = (x, y) => Math.abs(((x - y + 540) % 360) - 180);
+function ensureChevrons() {
+  if (chevrons) return;
+  const lock1 = svg && svg.getElementById("Chevron_Lock_1");
+  if (!lock1) { chevrons = []; return; }
+  const els = [...lock1.querySelectorAll("path, polygon, polyline")];   // 9 × (path,polygon,polyline)
+  const groups = [];
+  for (let i = 0; i < els.length; i += 3) {
+    const grp = els.slice(i, i + 3);
+    let bb; try { bb = grp[0].getBBox(); } catch { bb = null; }
+    if (!bb || !Number.isFinite(bb.x) || bb.width === 0) return;        // not laid out yet — retry next call
+    const a = (Math.atan2(-((bb.y + bb.height / 2) - VB.cy), (bb.x + bb.width / 2) - VB.cx) * 180) / Math.PI;
+    const ang = CHEV_ANGLES.reduce((p, c) => (angDist(c, a) < angDist(p, a) ? c : p), CHEV_ANGLES[0]);
+    groups.push({ els: grp, ang });
+  }
+  chevrons = groups;
+}
+let litKey = "";
+export function setLitChevrons(angles) {
+  ensureChevrons();
+  if (!chevrons || !chevrons.length) return;
+  const key = angles.slice().sort().join(",");
+  if (key === litKey) return;                  // only touch the DOM when the set changes
+  litKey = key;
+  const on = new Set(angles);
+  for (const c of chevrons) {
+    const lit = on.has(c.ang);
+    for (const el of c.els) {
+      const line = el.tagName.toLowerCase() === "polyline";
+      el.style.fill = lit && !line ? "#d8281f" : "";       // "" reverts to the recolor stylesheet
+      el.style.stroke = lit ? "#ff6a60" : "";
+      el.style.filter = lit ? "drop-shadow(0 0 3px rgba(255,60,55,.95))" : "";
+    }
+  }
+}
+
 // angle (deg, SVG y-down convention) of a glyph's centre about the gate centre — used by the dialer
 // to rotate the ring so a dialed glyph lands under its locking chevron.
 export function glyphAngle(name) {

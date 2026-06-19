@@ -16,7 +16,7 @@ export function transportRects(L) {
 }
 
 // rolling history for the sidebar telemetry mini-charts (persists across frames)
-const HIST = { fps: [], loop: [], spd: [], dps: [], hud: [], gate: [] };
+const HIST = { fps: [], render: [], spd: [], dps: [], hud: [], gate: [] };
 
 // draw a gate-svg glyph (Path2D in svg units) centred at design (cxD,cyD), fitted to sizeD design px
 function drawGlyph(g, M, name, cxD, cyD, sizeD, col, strokePx) {
@@ -43,6 +43,13 @@ export function drawHud(g, M, L, st, metrics = {}) {
   const rect = (dx, dy, dw, dh, dr) => { const x0 = X(dx), y0 = Y(dy); rrS(x0, y0, X(dx + dw) - x0, Y(dy + dh) - y0, (dr || 0) * sc); };
   const line = (a, b, c, d) => { g.beginPath(); g.moveTo(X(a), Y(b)); g.lineTo(X(c), Y(d)); g.stroke(); };
   const polyD = (pts) => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))); g.stroke(); };
+  // rounded-corner polyline — the real circuit rails are rounded rectangles (per the mask/target)
+  const polyRound = (pts, r) => {
+    if (!pts || pts.length < 3) return polyD(pts);
+    g.beginPath(); g.moveTo(X(pts[0][0]), Y(pts[0][1]));
+    for (let i = 1; i < pts.length - 1; i++) g.arcTo(X(pts[i][0]), Y(pts[i][1]), X(pts[i + 1][0]), Y(pts[i + 1][1]), r * sc);
+    g.lineTo(X(pts[pts.length - 1][0]), Y(pts[pts.length - 1][1])); g.stroke();
+  };
   const arc = (dx, dy, r, a0, a1) => { g.beginPath(); g.arc(X(dx), Y(dy), r * sc, a0 ?? 0, a1 ?? 7); };
   const text = (t, dx, dy, size, col) => { g.font = `${(size || 14) * sc}px "DejaVu Sans Mono","Consolas",monospace`; g.fillStyle = col || P.cyan; g.fillText(t, X(dx), Y(dy)); };
   const stroke = (col, w) => { g.strokeStyle = col; g.lineWidth = lw(w); g.stroke(); };
@@ -69,6 +76,7 @@ export function drawHud(g, M, L, st, metrics = {}) {
   // binary-dot panels — a sparse white/blue field of data dots with a bright cyan scan band that
   // sweeps along the zone's long axis (the "loading"/data-stream look from the source captures).
   for (const z of (L.binaryDots || [])) {
+    M.setY(z.y > 537 ? "bot" : "auto");   // footer dot zones pin to the bottom WITH the footer (same height/position)
     g.strokeStyle = L.style.layers.binaryDots; g.lineWidth = lw(1.5); const A = 12;
     const cn = (cx, cy, dx, dy) => { g.beginPath(); g.moveTo(X(cx + dx * A), Y(cy)); g.lineTo(X(cx), Y(cy)); g.lineTo(X(cx), Y(cy + dy * A)); g.stroke(); };
     const k = z.corners || [];
@@ -109,7 +117,7 @@ export function drawHud(g, M, L, st, metrics = {}) {
   const n = L.numbers, m = metrics || {};
   const dps = (m.gateSpeed || 0) * (m.fps || 0);   // live rotation speed (deg/sec) — reads during idle/active spin too
   const ROWS = [
-    ["fps", "FPS", `fps ${(m.fps | 0)}`], ["loop", "LOOP", `${(m.loopMs || 0).toFixed(1)}ms`],
+    ["fps", "FPS", `fps ${(m.fps | 0)}`], ["render", "RENDER ms", `${(m.renderMs || 0).toFixed(1)}`],
     ["spd", "GATE °/f", `${(m.gateSpeed || 0).toFixed(2)}°`], ["dps", "GATE °/s", `${Math.round(dps)}°`],
     ["hud", "HUD ms", `${(m.hudMs || 0).toFixed(2)}`], ["gate", "GATE ms", `${(m.gateMs || 0).toFixed(2)}`],
   ];
@@ -121,7 +129,7 @@ export function drawHud(g, M, L, st, metrics = {}) {
   };
   for (let i = 0; i < 6; i++) {
     const col = i % 2, row = (i / 2) | 0, x = n.x0 + col * n.colGap, y = n.y0 + row * n.rowGap;
-    const [key, label, val] = ROWS[i], raw = [m.fps, m.loopMs, m.gateSpeed, dps, m.hudMs, m.gateMs][i] || 0;
+    const [key, label, val] = ROWS[i], raw = [m.fps, m.renderMs, m.gateSpeed, dps, m.hudMs, m.gateMs][i] || 0;
     const buf = HIST[key]; buf.push(raw); if (buf.length > 30) buf.shift();
     text(label, x, y - 13, 10, "rgba(150,190,255,.65)");
     text(val, x, y, 17, P.white);
@@ -184,7 +192,7 @@ export function drawHud(g, M, L, st, metrics = {}) {
   L.circuit.forEach((rt) => {
     const on = engaged.has(rt.chev); g.strokeStyle = on ? P.red : "rgba(90,150,255,.9)"; g.lineWidth = lw(2.2);
     if (on) { g.shadowColor = "rgba(255,45,54,.7)"; g.shadowBlur = 5 * sc; }
-    if (rt.pts) polyD(rt.pts); g.shadowBlur = 0;
+    if (rt.pts) polyRound(rt.pts, 16); g.shadowBlur = 0;
   });
 
   // red anchor node — where each engaged circuit plugs into its (now-red) chevron, like the video
@@ -229,11 +237,21 @@ export function drawHud(g, M, L, st, metrics = {}) {
   // texts — clock/date/day/status are live. Left-column labels pin to their panel's edge (top/bottom)
   // so they travel with the numbers/checklist panels; everything else uses the centred band.
   const SKIP = new Set(["clock", "date", "day", "authLabel", "user", "sys"]);   // drawn in the gauge / auth block
+  const FOOTER = new Set(["lst1", "lst2"]);                                      // footer labels share ONE anchor → same row
   for (const tt of (L.texts || [])) {
     if (SKIP.has(tt.id)) continue;
-    const s = tt.id === "status" ? (st.status || tt.t) : tt.t;
-    M.setY(tt.x < 428 ? (tt.y < 537 ? "top" : "bot") : "auto");   // 428 = left column (GL); 537 = design cy
-    text(s, tt.x, tt.y, tt.size || 14, P.cyan);
+    M.setY(FOOTER.has(tt.id) ? "bot" : tt.x < 428 ? (tt.y < 537 ? "top" : "bot") : "auto");   // 428 = left column (GL); 537 = design cy
+    // LST codes sit above the footer's two corners — anchor each to its corner so they track the
+    // (left/right-anchored) readout box instead of drifting on non-design aspects.
+    if (tt.id === "lst1") { g.textAlign = "left"; text(tt.t, L.footer.readout.x, tt.y, tt.size || 14, P.cyan); continue; }
+    if (tt.id === "lst2") { g.textAlign = "right"; text(tt.t, L.footer.readout.x + L.footer.readout.w, tt.y, tt.size || 14, P.cyan); g.textAlign = "left"; continue; }
+    if (tt.id === "status") {   // two lines: "STATUS:" then the phase description, so long values don't overlap
+      const val = (st.status || tt.t).replace(/^STATUS:\s*/, ""), sz = 15;
+      text("STATUS:", tt.x, tt.y - 9, sz, P.cyan);
+      text(val, tt.x, tt.y + 10, sz, P.white);
+      continue;
+    }
+    text(tt.t, tt.x, tt.y, tt.size || 14, P.cyan);
   }
   M.setY("auto");
 }

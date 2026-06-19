@@ -20,7 +20,7 @@ let L, dialer, dbg, dpr = 1, demoAt = 0;
 // virtual clock — the dialer is driven by `vnow`, which only advances when not paused (so the
 // transport can pause/step the whole animation deterministically).
 let paused = false, vnow = 0, lastReal = 0, stepMs = 0, prevRing = 0, frames = 0, fpsAt = 0;
-const metrics = { fps: 0, loopMs: 0, hudMs: 0, gateMs: 0, gateSpeed: 0, targetIdx: -1, paused: false };
+const metrics = { fps: 0, renderMs: 0, hudMs: 0, gateMs: 0, gateSpeed: 0, targetIdx: -1, paused: false };
 const transport = {
   toggle: () => { paused = !paused; metrics.paused = paused; },               // play/pause the loop
   forward: () => { if (paused) stepMs += 1000 / 60; else dialer.skip(); },     // paused: step a frame · playing: skip a state
@@ -92,7 +92,8 @@ function resize() {
 function loop() {
   const real = performance.now();
   if (!lastReal) { lastReal = real; vnow = real; }
-  if (!paused) vnow += real - lastReal;        // advance virtual time only while playing
+  const frameMs = real - lastReal;             // REAL elapsed since last frame = honest render time (≈ 1000/fps, incl. browser paint)
+  if (!paused) vnow += frameMs;                // advance virtual time only while playing
   lastReal = real;
   if (stepMs) { vnow += stepMs; stepMs = 0; }   // single-frame step (forward/back while paused)
 
@@ -115,7 +116,7 @@ function loop() {
   metrics.gateMs = performance.now() - gateStart;
 
   renderLogo(vnow / 1000);
-  metrics.loopMs = performance.now() - real;
+  metrics.renderMs = frameMs;   // honest per-frame time (JS + paint/composite), consistent with FPS
   frames++;
   if (real - fpsAt >= 250) { metrics.fps = Math.round((frames * 1000) / (real - fpsAt)); frames = 0; fpsAt = real; }
   requestAnimationFrame(loop);

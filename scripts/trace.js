@@ -66,6 +66,7 @@ const tip = (a) => [ M.gate.cx + M.gate.R*M.gate.chevR*Math.cos(a*Math.PI/180),
 function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
 function L(x0,y0,x1,y1){g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();}
 function poly(pts){g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();}
+function polyR(pts,r){if(!pts||pts.length<3)return poly(pts);g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length-1;i++)g.arcTo(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1],r);g.lineTo(pts[pts.length-1][0],pts[pts.length-1][1]);g.stroke();}
 function lab(t,x,y,col){g.fillStyle=col;g.font='12px monospace';g.fillText(t,x,y);}
 // binary-dot panel: partial corner brackets (only the listed corners) + a deterministic dot scatter
 function bdots(z,dotCol,borderCol){
@@ -167,7 +168,7 @@ function schema(img){
 
   // circuit — blue idle traces
   g.strokeStyle='rgba(90,150,255,.85)'; g.lineWidth=1.5;
-  D.CIRCUIT.forEach((rt)=>{ if(rt.pts) poly(rt.pts); }); g.lineWidth=2;
+  D.CIRCUIT.forEach((rt)=>{ if(rt.pts) polyR(rt.pts,16); }); g.lineWidth=2;
 
   // all standalone texts in cyan
   for(const tt of (M.texts||[])) text(tt.t, tt.x, tt.y, tt.size||14, P.cyan);
@@ -247,7 +248,7 @@ function draw(img){
 
   // circuit — explicit measured polylines, one colour per route
   const pal=D.STYLE.circuitPalette;
-  D.CIRCUIT.forEach((rt,i)=>{ g.strokeStyle=pal[i%pal.length]; g.lineWidth=2.5; if(rt.pts) poly(rt.pts); g.lineWidth=2; });
+  D.CIRCUIT.forEach((rt,i)=>{ g.strokeStyle=pal[i%pal.length]; g.lineWidth=2.5; if(rt.pts) polyR(rt.pts,16); g.lineWidth=2; });
   // blue dots = each circuit's CHEVRON anchor (its last point), like chevron 7
   g.fillStyle='#00e5ff'; D.CIRCUIT.forEach(rt=>{ if(rt.pts){ const p=rt.pts[rt.pts.length-1]; g.beginPath(); g.arc(p[0],p[1],4,0,7); g.fill(); } });
 

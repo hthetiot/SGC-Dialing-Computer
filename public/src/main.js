@@ -18,7 +18,8 @@ const logoCanvas = document.getElementById("logo"), host = document.getElementBy
 let L, dialer, dbg, dpr = 1, demoAt = 0;
 
 async function boot() {
-  L = await fetch("./src/layout.json").then((r) => r.json());
+  // dist inlines layout as a global (self-contained build); dev fetches the file.
+  L = window.__SGC_LAYOUT__ || (await fetch("./src/layout.json").then((r) => r.json()));
   try { await mountGate(host); } catch (e) { console.warn("gate svg:", e); }
   initLogo(logoCanvas);
   dialer = createDialer();

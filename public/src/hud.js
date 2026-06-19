@@ -81,7 +81,7 @@ export function drawHud(g, M, L, st) {
     g.strokeStyle = P.cyan; g.lineWidth = lw(1.5); g.strokeRect(X(cl.sqL) - d / 2, Y(cy) - d / 2, d, d); g.strokeRect(X(cl.sqR) - d / 2, Y(cy) - d / 2, d, d);
     if (litRow || live) { g.fillStyle = P.red; g.shadowColor = "rgba(255,45,54,.8)"; g.shadowBlur = 5 * sc; const x0 = X(cl.barL); rrS(x0, Y(cy) - 8 * sc, X(cl.barR) - x0, 16 * sc, 7 * sc); g.fill(); g.shadowBlur = 0; }
     text(String(i + 1), cl.numX, cy - 8, 14, P.cyan);
-    if (litRow) text("OK", cl.numX + 16, cy - 8, 13, P.white);
+    if (litRow) text("OK", cl.sqR + 14, cy - 8, 13, P.white);   // in the right-tab gap, clear of the box
   }
 
   // footer — readout (countdown when active) + segmented auth cells

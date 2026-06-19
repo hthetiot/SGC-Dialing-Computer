@@ -9,7 +9,8 @@ const RING_GROUPS = ["Symbols", "Main_gate_parts", "Inner_Chevron_Delimiters", "
 let svg = null, ringGroups = [];
 
 export async function mountGate(host, base = "./assets/gate.svg") {
-  const txt = await fetch(base).then((r) => r.text());
+  // dist inlines the SVG as a global (self-contained build); dev fetches the file.
+  const txt = window.__SGC_GATE_SVG__ || (await fetch(base).then((r) => r.text()));
   host.innerHTML = txt;
   svg = host.querySelector("svg");
   svg.removeAttribute("width"); svg.removeAttribute("height");

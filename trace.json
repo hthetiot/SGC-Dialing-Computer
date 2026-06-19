@@ -2,6 +2,16 @@
   "_doc": "Hand-authored vector model of tmp/target.png (1491x1074), measured tile-by-tile from tmp/mask_inv.png via scripts/grid.js. Single source of truth for HUD geometry; validated via `node scripts/trace.js` -> tmp/trace.png. layout.json is derived from this. All coords in TARGET pixels.",
   "canvas": { "w": 1491, "h": 1074 },
 
+  "_style_doc": "All colours used by scripts/trace.js live here — the script holds NO data. `schema` = the filled SGC preview palette; `layers` = one validation-overlay colour per element (also the legend); `circuitPalette` = per-route trace colours. Swap these (and the blocks below) to retarget another HUD spec with the same renderer.",
+  "style": {
+    "schema": { "bg": "#02060f", "line": "#2f6bff", "text": "#86c8ff", "white": "#eaf2ff",
+                "dim": "#13325f", "red": "#ff2d36", "panel": "#081a33", "glow": "rgba(60,120,255,.55)" },
+    "layers": { "frame": "#ff2e2e", "rail": "#ff9e2c", "logoBay": "#ffe23b", "header": "#d8b24a",
+                "timer": "#22ff88", "numbers": "#19d3c5", "checklist": "#ff7ad0", "footer": "#00e5ff",
+                "boxes": "#7CFC00", "gate": "#ffffff", "circuit": "#ff5d5d", "texts": "#ff7a1a" },
+    "circuitPalette": ["#ff5d5d", "#ffd24d", "#7CFC00", "#36d0ff", "#b06bff", "#ff8ad0", "#ffffff"]
+  },
+
   "frame": { "x0": 29, "y0": 12, "x1": 1458, "y1": 1069, "r": 24 },
 
   "rail": { "x": 288, "busX": 306, "topY": 40 },
@@ -11,7 +21,7 @@
   "header": { "panelX0": 187, "panelX1": 1175, "panelY0": 25, "panelY1": 150,
               "creditX": 197, "credit1Y": 42, "credit2Y": 75,
               "binaryX0": 620, "binaryX1": 1160, "binaryY0": 40, "binaryY1": 120,
-              "transportX": 200, "transportY": 116,
+              "transport": "◀◀ ▶ ▶▶", "transportX": 200, "transportY": 116,
               "destX": 1015, "destX1": 1258, "destY": 88 },
 
   "timer": { "cx": 150, "cy": 287, "r": 84,
@@ -24,12 +34,14 @@
                  "bar0Y": 765, "barStepY": 33,
                  "sqL": 84, "barL": 100, "barR": 145, "numX": 168, "sqR": 250, "rightTabX": 275 },
 
+  "_auth_doc": "Postal-code style: each digit sits INSIDE its own cell box. Two groups (6 + 8) of cellW-wide cells with a dash in the gap between. Measured separators every ~35px from the mask.",
   "footer": { "readout": { "x": 332, "y": 888, "w": 805, "h": 113 },
-              "authCellX0": 628, "authCellX1": 1210, "authCells": 15, "dashCell": 6,
-              "authText": "778927-57892387", "authY": 1029 },
+              "auth": { "cellW": 35, "cellTop": 1018, "cellH": 36, "digitTop": 1027, "size": 22,
+                        "g1x": 627, "g1n": 6, "g2x": 905, "g2n": 8, "dashX": 866,
+                        "text": "778927-57892387" } },
 
   "boxes": { "left": 1238, "right": 1367, "top0": 165, "stepY": 117.5, "h": 101, "count": 7,
-             "numDX": -30, "numDY": 86,
+             "numDX": -33, "numDY": 88, "numSize": 24,
              "lanesX": [1401, 1415, 1429, 1443] },
 
   "gate": { "cx": 743, "cy": 513, "R": 315,
@@ -64,7 +76,7 @@
     { "id": "lst1", "t": "LST CODE # 1", "x": 307, "y": 809, "size": 26 },
     { "id": "lst2", "t": "LST CODE # 2", "x": 1016, "y": 809, "size": 26 },
     { "id": "authLabel", "t": "AUTHORIZATION CODE:", "x": 292, "y": 1041, "size": 21 },
-    { "id": "user", "t": "USER: SGT. W HARRIMAN", "x": 1245, "y": 1021, "size": 17 },
-    { "id": "sys", "t": "SYS: NOMINAL", "x": 1245, "y": 1046, "size": 17 }
+    { "id": "user", "t": "USER: SGT. W HARRIMAN", "x": 1218, "y": 1021, "size": 15 },
+    { "id": "sys", "t": "SYS: NOMINAL", "x": 1218, "y": 1046, "size": 15 }
   ]
 }

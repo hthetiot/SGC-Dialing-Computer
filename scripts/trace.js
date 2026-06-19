@@ -25,14 +25,14 @@ const MATCH = ARG === "match";
 const MATCH_OP = Number(process.argv[3] ?? 0.62);   // node scripts/trace.js match 0.5
 const UNDER = ARG === "match" ? "target.png" : ARG === "mask" ? "mask.png" : "target.png";
 
+// trace.js holds NO data — everything (geometry, text, values, colours) comes from trace.json.
 const T = JSON.parse(readFileSync(ROOT + "trace.json", "utf8"));
 const W = T.canvas.w, H = T.canvas.h;
-// shape into the names the draw code expects
 const MODEL = { frame: T.frame, rail: T.rail, logoBay: T.logoBay, header: T.header, timer: T.timer, numbers: T.numbers, status: T.status, checklist: T.checklist, footer: T.footer, boxes: T.boxes, gate: T.gate, texts: T.texts };
-const CIRCUIT = T.circuit, LOCK_ORDER = T.lockOrder;
+const CIRCUIT = T.circuit, STYLE = T.style;
 
 // ============================================================================
-const ops = JSON.stringify({ W, H, MODEL, CIRCUIT, LOCK_ORDER, RAW, UNDER, SCHEMA, MATCH, MATCH_OP });
+const ops = JSON.stringify({ W, H, MODEL, CIRCUIT, STYLE, RAW, UNDER, SCHEMA, MATCH, MATCH_OP });
 
 const HTML = `<!doctype html><meta charset=utf8><style>html,body{margin:0;background:#000}</style>
 <canvas id=c></canvas><script>
@@ -48,8 +48,8 @@ function lab(t,x,y,col){g.fillStyle=col;g.font='12px monospace';g.fillText(t,x,y
 
 // ---- SCHEMA: filled, SGC-styled preview of trace.json (the design render) -------------------
 function schema(img){
-  const P = { bg:'#02060f', blue:'#2f6bff', cyan:'#86c8ff', white:'#eaf2ff', dim:'#13325f',
-              red:'#ff2d36', glow:'rgba(60,120,255,.55)', panel:'#081a33' };
+  const s=D.STYLE.schema;
+  const P = { bg:s.bg, blue:s.line, cyan:s.text, white:s.white, dim:s.dim, red:s.red, glow:s.glow, panel:s.panel };
   g.fillStyle=P.bg; g.fillRect(0,0,D.W,D.H);
   if(img){ g.save(); g.globalAlpha=0.95; g.filter='brightness(1.7)'; g.drawImage(img,0,0,D.W,D.H); g.restore(); }
   if(D.MATCH) g.globalAlpha=D.MATCH_OP;
@@ -69,7 +69,7 @@ function schema(img){
 
   // header panel + transport + binary dots
   const hd=M.header; rr(hd.panelX0,hd.panelY0,hd.panelX1-hd.panelX0,hd.panelY1-hd.panelY0,10); stroke(P.blue,2);
-  text('◀◀ ▶ ▶▶', hd.transportX, hd.transportY, 16, P.cyan);
+  text(hd.transport, hd.transportX, hd.transportY, 16, P.cyan);
   g.fillStyle='rgba(150,190,255,.5)';
   for(let i=0;i<70;i++){ const dx=hd.binaryX0+((i*53)%(hd.binaryX1-hd.binaryX0)); const dy=hd.binaryY0+(((i*37)%80)); if((i*7)%3) g.fillRect(dx,dy,4,4); }
 
@@ -92,20 +92,20 @@ function schema(img){
     text(String(i+1), cl.numX, cy-8, 14, P.cyan); }
   g.lineWidth=2;
 
-  // footer — readout box + auth cells with digits
+  // footer — readout box + auth cells (postal-code: a digit boxed in each cell, 2 groups + dash)
   const ft=M.footer; rr(ft.readout.x,ft.readout.y,ft.readout.w,ft.readout.h,8); stroke(P.blue,2);
-  const cw=(ft.authCellX1-ft.authCellX0)/ft.authCells, digits=ft.authText.replace('-','');
-  let di=0;
-  for(let i=0;i<ft.authCells;i++){ const cx0=ft.authCellX0+i*cw;
-    if(i===ft.dashCell){ text('-', cx0+cw/2-5, ft.authY, 22, P.white); continue; }
-    g.strokeStyle=P.blue; g.lineWidth=1.5; g.strokeRect(cx0+1, ft.authY-4, cw-2, 30);
-    text(digits[di++]||'', cx0+cw/2-7, ft.authY, 22, P.white); }
-  g.lineWidth=2;
+  { const a=ft.auth, digits=a.text.replace('-',''); let di=0;
+    g.strokeStyle=P.blue; g.lineWidth=1.5;
+    const grp=(x,n)=>{ for(let i=0;i<n;i++){ const cx=x+i*a.cellW;
+      g.strokeRect(cx, a.cellTop, a.cellW, a.cellH);
+      text(digits[di++]||'', cx+a.cellW/2-a.size*0.28, a.digitTop, a.size, P.white); } };
+    grp(a.g1x,a.g1n); grp(a.g2x,a.g2n);
+    text('-', a.dashX, a.digitTop, a.size, P.white); g.lineWidth=2; }
 
   // boxes — outlined + bold number
   const bx=M.boxes;
   for(let i=0;i<bx.count;i++){ const y=bx.top0+i*bx.stepY; rr(bx.left,y,bx.right-bx.left,bx.h,10); stroke(P.blue,2);
-    text(String(i+1), bx.left+bx.numDX, y+bx.numDY, 30, P.white); }
+    text(String(i+1), bx.left+bx.numDX, y+bx.numDY, bx.numSize||30, P.white); }
 
   // gate — concentric rings + chevron Vs
   g.strokeStyle=P.white;
@@ -129,17 +129,15 @@ function schema(img){
 
 function draw(img){
   const isMask = D.UNDER==='mask.png';
-  g.fillStyle = isMask ? '#ffffff' : '#02060f'; g.fillRect(0,0,D.W,D.H);
+  g.fillStyle = isMask ? '#ffffff' : D.STYLE.schema.bg; g.fillRect(0,0,D.W,D.H);
   if(img){ g.save();
     if(isMask){ g.globalAlpha=0.32; g.drawImage(img,0,0,D.W,D.H); }       // crisp mask: just dim it
     else { g.globalAlpha=0.95; g.filter='brightness(1.9) saturate(0.7)'; g.drawImage(img,0,0,D.W,D.H); } // dim photo: brighten
     g.restore(); }
   g.lineWidth=2; g.textBaseline='top';
 
-  // Colour per HUD layer (the canonical element list — names match trace.json keys + the legend).
-  const COL = { frame:'#ff2e2e', rail:'#ff9e2c', logoBay:'#ffe23b', header:'#d8b24a',
-    timer:'#22ff88', numbers:'#19d3c5', checklist:'#ff7ad0', footer:'#00e5ff',
-    boxes:'#7CFC00', gate:'#ffffff', circuit:'#ff5d5d', texts:'#ff7a1a' };
+  // Colour per HUD layer comes from trace.json style.layers (names match the trace.json keys).
+  const COL = D.STYLE.layers;
 
   // frame — plain rounded rectangle (rounded corners, NO chamfer)
   const f=M.frame; g.strokeStyle=COL.frame; rr(f.x0,f.y0,f.x1-f.x0,f.y1-f.y0,f.r); g.stroke();
@@ -158,7 +156,7 @@ function draw(img){
   const hd=M.header; g.strokeStyle=COL.header;
   rr(hd.panelX0,hd.panelY0,hd.panelX1-hd.panelX0,hd.panelY1-hd.panelY0,10); g.stroke();
   g.fillStyle=COL.header; g.font='16px monospace'; g.textBaseline='top';
-  g.fillText('◀◀ ▶ ▶▶', hd.transportX, hd.transportY);   // transport ◀◀ ▶ ▶▶
+  g.fillText(hd.transport, hd.transportX, hd.transportY);   // transport glyphs
   g.strokeRect(hd.binaryX0,hd.binaryY0,hd.binaryX1-hd.binaryX0,hd.binaryY1-hd.binaryY0);
 
   // timer — arc only (the 17:56 / date / day text lives in texts[])
@@ -185,13 +183,13 @@ function draw(img){
   // footer — readout box + segmented auth cells (LST / AUTH / USER / SYS text live in texts[])
   const ft=M.footer; g.strokeStyle=COL.footer;
   rr(ft.readout.x,ft.readout.y,ft.readout.w,ft.readout.h,8); g.stroke();
-  const cw=(ft.authCellX1-ft.authCellX0)/ft.authCells;
-  for(let i=0;i<ft.authCells;i++){ if(i===ft.dashCell) continue; g.strokeRect(ft.authCellX0+i*cw+1, ft.authY-4, cw-2, 30); }
+  { const a=ft.auth; const grp=(x,n)=>{ for(let i=0;i<n;i++) g.strokeRect(x+i*a.cellW, a.cellTop, a.cellW, a.cellH); };
+    grp(a.g1x,a.g1n); grp(a.g2x,a.g2n); }
 
   // boxes — 7 result boxes + bold number at lower-left
   const bx=M.boxes; g.strokeStyle=COL.boxes;
   for(let i=0;i<bx.count;i++){ const y=bx.top0+i*bx.stepY; rr(bx.left,y,bx.right-bx.left,bx.h,10); g.stroke();
-    g.fillStyle=COL.boxes; g.font='30px monospace'; g.fillText(String(i+1), bx.left+bx.numDX, y+bx.numDY); }
+    g.fillStyle=COL.boxes; g.font=(bx.numSize||30)+'px monospace'; g.fillText(String(i+1), bx.left+bx.numDX, y+bx.numDY); }
 
   // gate — rings + chevron tip markers (measured)
   g.strokeStyle=COL.gate; g.lineWidth=1.5;
@@ -201,8 +199,8 @@ function draw(img){
     g.fillStyle=used?'#00e5ff':'#888'; g.beginPath(); g.arc(tx,ty,4,0,7); g.fill(); } }
 
   // circuit — explicit measured polylines, one colour per route
-  const pal=['#ff5d5d','#ffd24d','#7CFC00','#36d0ff','#b06bff','#ff8ad0','#ffffff'];
-  D.CIRCUIT.forEach((rt,i)=>{ g.strokeStyle=pal[i]; g.lineWidth=2.5; if(rt.pts) poly(rt.pts); g.lineWidth=2; });
+  const pal=D.STYLE.circuitPalette;
+  D.CIRCUIT.forEach((rt,i)=>{ g.strokeStyle=pal[i%pal.length]; g.lineWidth=2.5; if(rt.pts) poly(rt.pts); g.lineWidth=2; });
 
   // texts — every standalone label at its measured TOP-LEFT anchor, sized to the mask
   g.textBaseline='top'; g.textAlign='left';
@@ -214,9 +212,7 @@ function draw(img){
   // LEGEND — element list (names match trace.json keys), placed in the empty gate void
   const lx=M.gate.cx-118, ly=M.gate.cy-118;
   g.globalAlpha=0.82; g.fillStyle='#000'; g.fillRect(lx-8,ly-8,240,250); g.globalAlpha=1;
-  const leg=[['frame',COL.frame],['rail',COL.rail],['logoBay',COL.logoBay],['header',COL.header],
-    ['timer',COL.timer],['numbers',COL.numbers],['checklist',COL.checklist],['footer',COL.footer],
-    ['boxes',COL.boxes],['gate',COL.gate],['circuit','rainbow'],['texts',COL.texts]];
+  const leg=Object.keys(COL).map(k=>[k, k==='circuit'?'rainbow':COL[k]]);   // derived from style.layers
   g.font='13px monospace'; g.textAlign='left';
   leg.forEach((e,i)=>{ g.fillStyle=e[1]==='rainbow'?'#fff':e[1]; g.fillRect(lx,ly+i*20,12,12);
     g.fillStyle='#cfe0ff'; g.fillText(e[0], lx+18, ly+i*20); });

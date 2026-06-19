@@ -1,4 +1,4 @@
-# GATE.md — SGC Dialing Computer · Knowledge Base
+# SPECS.md — SGC Dialing Computer · Knowledge Base
 
 Everything you need to KNOW to build a screen-accurate **SGC Stargate dialing computer**
 (SG-1 series cyan interface, rotating 3D point-of-origin emblem) as an **ES6 PWA** with
@@ -9,10 +9,16 @@ hard constraints — not a record of work done.
 
 ## 1. The source assets and what each is FOR
 
-All in `references/`.
+All in `source/`:
+- `target.png` — the match target (see below).
+- `mask.png` — the crisp binary trace used for all measurement (see §1 tooling).
+- `Milky_way_stargate_with_detailed_glyphs.svg` — the gate geometry base.
+- `Dialing_computer_(2).webp`, `Dialing_computer_(Dialing).webp`,
+  `Dialing_computer_(Pilot Animation).webp`, `Dialing_computer_(Unending).jpg` — secondary
+  cross-check captures (active/dialing states; photographed at angles, not pixel-measurable).
 
 ### The gate geometry (the one true base)
-`Milky_way_stargate_with_detailed_glyphs.svg` — authentic full vector Stargate.
+`source/Milky_way_stargate_with_detailed_glyphs.svg` — authentic full vector Stargate.
 - viewBox `0 0 527.249 526.275`.
 - **True ring center is (263.691, 264.729)** — the average center of the 4 `Main_gate_parts`
   circles. This is NOT the viewBox center (263.62, 263.14); using the viewBox center makes the
@@ -36,24 +42,17 @@ Confirmed by radius: the clamps + housing plates are the fixed outer structure; 
 turns within them.
 
 ### UI layout references (the cyan SGC design = the target)
-- **`tmp/target.png` (1491×1074, flat-on) — CANONICAL layout frame, the idle/standby state.**
-  Every HUD anchor is measured from this with `scripts/probe.js`. This is the match target.
-- The **CRT active/dialing captures** (provided in-chat) define the ACTIVE state: red chevron
-  indicators, red circuit traces fanning to the filled boxes, the hero glyph in the gate center,
-  and the checklist showing "N OK". Treat these as behavior/colour reference (photographed at an
-  angle, so not pixel-measurable).
-- `references/Dialing_computer.webp`, `references/Dialing_computer_(Unending).jpg`,
-  `references/preview.webp`, `references/preview (3).webp` — secondary cross-checks.
+- **`source/target.png` (1491×1074, flat-on) — CANONICAL layout frame.** Every HUD anchor is
+  measured from `source/mask.png` (its crisp trace). This is the match target.
+- The **CRT active/dialing captures** (`source/Dialing_computer_*.webp/.jpg`) define the ACTIVE
+  state: red chevron indicators, red circuit traces fanning to the filled boxes, the hero glyph in
+  the gate center, the checklist showing "N OK". Behaviour/colour reference only (shot at an angle,
+  not pixel-measurable).
 
-### Visual-verification tooling (this repo, Node-only — works with node/npm/bun)
-- `npm run capture -- <state>` → `tmp/shot_<state>.png` (states: idle|dialing|dialed|kawoosh|
-  active, via the `?state=` deep-link in main.js; serves `public/` live, no build needed).
-- `npm run zoom -- <file> [x y w h] [z]` → `tmp/zoom.png` (magnified crop for close review).
-- `npm run diff -- <a> <b> [crop]` → `tmp/diff.png` (red=A/green=B/yellow=aligned overlay).
-- `node scripts/probe.js row <y>|col <x>|px <x> <y>|blue-row <y> [file]` — decodes a PNG and
-  reports exact edge coordinates, used to set layout.json from real target pixels.
-- Workflow: clean `tmp/` (keep `target.png`) → `capture` → `diff`/`zoom`/`probe` → adjust
-  `layout.json`/`hud.js` → repeat.
+### Visual-verification tooling — see **[PIPELINE.md](PIPELINE.md)** for the full pixel-perfect flow
+The measurement loop (probe → grid → zoom → trace) reads `source/mask.png` and writes to
+`tmp/<script>/`; `trace.json` is the design source and `scripts/trace.js` renders it. Legacy
+`capture`/`diff` (compare a live app render to `source/target.png`) are used later, at build time.
 
 ### Sources & tmp layout
 - **`source/`** holds the inputs: `target.png` (the dim CRT photo — the match target) and
@@ -72,22 +71,28 @@ Measure `source/mask.png`, not the photo. All §2 numbers were read from it.
   systematic tile-by-tile reading (read coordinates straight off the ruler, never guess an area).
 - `node scripts/zoom.js <file> [x y w h] [z]` → `tmp/zoom/<stem>_x_y_w_h_z.png` (params in name).
   `<file>` resolves from `source/` then `tmp/` (tmp may include a subfolder, e.g. `mask/over.png`).
-- `node scripts/trace.js [target|mask|raw]` → `tmp/trace/trace_<arg>.png` — draws the whole vector
-  model from `trace.json` over the brightened target (default) OR the dimmed crisp **mask**, each
-  HUD layer a distinct color + legend. The pre-code VALIDATION artifact: confirm every line/path
-  before writing `layout.json`/`hud.js`. (`raw` = on black.)
+- `node scripts/trace.js [target|mask|raw]` → `tmp/trace/trace_<arg>.png` — VALIDATION overlay:
+  the whole vector model from `trace.json` in distinct colours + legend, over the brightened target
+  (default) / dimmed crisp **mask** / black (`raw`). Confirm every line/path here.
+- `node scripts/trace.js schema` → `tmp/trace/schema.png` — PREVIEW: a filled, SGC-styled render of
+  `trace.json` on dark navy (blue frame, cyan text, gate rings, red checklist bars, …). This is the
+  "figma": what the HUD will look like, straight from the data.
+- `node scripts/trace.js match [opacity]` → `tmp/trace/match.png` — the schema preview overlaid on
+  the real target at `opacity` (default 0.62) to confirm it lines up. e.g. `… match 0.5`.
 
 (`mask.js` and `circuits.js` were removed — folded into `probe.js` auto-invert and `trace.js mask`.)
 
-### `trace.json` (the validated model — single source of truth)
-All HUD geometry in **target pixels (1491×1074)**, measured from the mask. `trace.js` renders it;
-`public/src/layout.json` is derived from it (normalize by /1491 x, /1074 y) once validated.
+### `trace.json` (THE design source — the "figma" for the HUD)
+All HUD geometry in **target pixels (1491×1074)**, measured from the mask: every element is a
+keyed block (`frame, rail, logoBay, header, timer, numbers, checklist, footer, boxes, gate,
+circuit, texts`). `trace.js schema` renders it filled; `match` checks the fit. Once the preview
+matches, `public/src/layout.json` is derived from it (normalize by /1491 x, /1074 y).
 
 ---
 
 ## 2. Screen-accurate facts and measurements
 
-### Gate placement (MEASURED from `tmp/mask_inv.png`, 1491×1074)
+### Gate placement (MEASURED from `source/mask.png`, 1491×1074)
 - Ring center: px **(743, 513)** = (0.498, 0.478). Outer rim radius **R = 315** px (0.211·W).
 - Chevron radius 0.93·R; glyph track 0.70–0.875·R; **event-horizon / inner void 0.66·R**.
 - **9 chevron tips (px, radially measured on the mask)** — feed these as the circuit endpoints:
@@ -100,13 +105,14 @@ All HUD geometry in **target pixels (1491×1074)**, measured from the mask. `tra
   there is no diagonal cut in the frame itself. (An earlier "top-left chamfer" note was wrong.)
 - Left-panel divider (vertical) at x≈288. Circuit **left rail** = nested verticals x≈300/307/314.
 - Logo bay: x 47, y 30, w 128, h 120 (rounded box holding the 3D emblem).
-- Header: panel x 187–1175, y 25–150. Music credit lines anchor at **x 197**, y 42 & 75 (left).
-  Transport ◀◀▶▶▶ at x≈405, y 118. Binary-dot panel x 620–1160. DESTINATION text x 1015–1258, y 88.
-- Timer arc: center (150, 287), r 84 (open lower-right). Clock 17:56 (y≈262) / date 29/03/20 (y≈312)
-  / day 29 (y≈348), CENTER-aligned on x 150.
-- Numbers grid (2×3): columns x 103 & 217; value rows y 416 / 492 / 568; sparkline +38 below each.
+- Header: panel x 187–1175, y 25–150. Music credit lines anchor at **x 200**, y 37 & 65 (left).
+  Transport ◀◀▶▶ at x≈200, y 116. Binary-dot panel x 620–1160. DESTINATION text x 1112, y 73.
+- Timer arc: center (150, 287), r 84 (open lower-right). Clock 17:56 (102,267) / date 29/03/20
+  (102,313) / day 29 (138,344), left-anchored in `texts[]`.
+- Numbers grid (2×3): columns x 100 & 215; value rows y 415 / 490 / 565; size 24; sparkline +33.
+  Values [[2,8],[4,1],[1,4]].
 - **STATUS is TEXT ONLY — there is NO bordered box** (the mask shows no border). "STATUS: DIALING
-  SEQUENCE" is centered ≈ x 158, y 702, in the gap between the numbers grid and the checklist.
+  SEQUENCE" at x 42, y 702 (left), in the gap between the numbers grid and the checklist.
 - Checklist: panel x 64, y 733, w 216, h 268 (bottom ≈ 1001), with a right-tab divider at x≈275.
   7 rows: [left square x≈84][RED bar x 100–145][blue number x≈168][right square x≈250]. Bar centres
   y 765→963, pitch 33.
@@ -197,7 +203,7 @@ Structure carrying the above:
 chevrons DO connect, via the rail. The left zoom confirms it.)
 
 **State color (this is the key idle-vs-active distinction):**
-- **Idle / standby** (`tmp/target.png`): the whole circuit is **blue**; chevrons are unlit
+- **Idle / standby** (`source/target.png`): the whole circuit is **blue**; chevrons are unlit
   (white/blue); gate center empty; boxes empty; checklist rows blank.
 - **Active / dialing** (the CRT captures): as each chevron engages, **its tap trace + its box
   trace turn RED** and fan from the engaged chevron to that box; the box **fills with the locked

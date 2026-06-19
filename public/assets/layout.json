@@ -38,9 +38,9 @@
                "sparkX": 60, "sparkColGap": 116, "sparkW": 88, "sparkDown": 39, "sparkBase": 11,
                "cols": 2, "rows": 3, "values": [[2, 8], [4, 1], [1, 4]] },
 
-  "checklist": { "x": 53, "y": 739, "w": 225, "h": 251, "rows": 7,
+  "checklist": { "x": 49, "y": 739, "w": 225, "h": 251, "rows": 7,
                  "bar0Y": 765, "barStepY": 33,
-                 "sqL": 70, "barL": 100, "barR": 143, "numX": 155, "sqR": 187, "rightTabX": 255 },
+                 "sqL": 66, "barL": 96, "barR": 139, "numX": 151, "sqR": 183, "rightTabX": 251 },
 
   "_auth_doc": "Postal-code style: each digit sits INSIDE its own cell box. Two groups (6 + 8) of cellW-wide cells with a dash in the gap between. Measured separators every ~35px from the mask.",
   "footer": { "readout": { "x": 332, "y": 888, "w": 805, "h": 113 },
@@ -84,8 +84,8 @@
     { "id": "date", "t": "29/03/20", "x": 102, "y": 313, "size": 24 },
     { "id": "day", "t": "29", "x": 138, "y": 344, "size": 28 },
     { "id": "status", "t": "STATUS: DIALING SEQUENCE", "x": 42, "y": 702, "size": 18 },
-    { "id": "lst1", "t": "LST CODE # 1", "x": 307, "y": 809, "size": 26 },
-    { "id": "lst2", "t": "LST CODE # 2", "x": 1016, "y": 809, "size": 26 },
+    { "id": "lst1", "t": "LST CODE # 1", "x": 307, "y": 848, "size": 26 },
+    { "id": "lst2", "t": "LST CODE # 2", "x": 1016, "y": 848, "size": 26 },
     { "id": "authLabel", "t": "AUTHORIZATION CODE:", "x": 292, "y": 1041, "size": 21 },
     { "id": "user", "t": "USER: SGT. W HARRIMAN", "x": 1218, "y": 1021, "size": 15 },
     { "id": "sys", "t": "SYS: NOMINAL", "x": 1218, "y": 1046, "size": 15 }

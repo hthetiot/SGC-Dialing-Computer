@@ -35,6 +35,7 @@ const UNDER = ARG === "match" ? "target.png" : ARG === "mask" ? "mask.png" : "ta
 
 // trace.js holds NO data — everything (geometry, text, values, colours) comes from trace.json.
 const T = JSON.parse(readFileSync(ROOT + "source/trace.json", "utf8"));
+const GATE_SVG = readFileSync(ROOT + "public/assets/gate.svg", "utf8").replace(/<\/?script/gi, "");  // for box glyphs
 const W = T.canvas.w, H = T.canvas.h;
 const MODEL = { frame: T.frame, rail: T.rail, logoBay: T.logoBay, header: T.header, timer: T.timer, numbers: T.numbers, binaryDots: T.binaryDots, status: T.status, checklist: T.checklist, footer: T.footer, boxes: T.boxes, gate: T.gate, texts: T.texts };
 const CIRCUIT = T.circuit, STYLE = T.style;
@@ -46,8 +47,18 @@ const ops = JSON.stringify({ W, H, MODEL, CIRCUIT, STYLE, RAW, UNDER, SCHEMA, MA
 // Rendering logic only (runs in the headless-Chrome canvas). All numbers/text/colours come from
 // trace.json via `M`/`D.STYLE`; do not hard-code data here — edit trace.json for that.
 const HTML = `<!doctype html><meta charset=utf8><style>html,body{margin:0;background:#000}</style>
+<div id=gatesrc style="position:absolute;left:-9999px;top:0">${GATE_SVG}</div>
 <canvas id=c></canvas><script>
 const D = ${ops}, M = D.MODEL;
+// extract a gate-svg glyph (by name) as a Path2D + bbox, for drawing the locked symbol in a box
+const _gsvg = document.querySelector('#gatesrc svg'), _gc = {};
+function glyphOf(name){ if(name in _gc) return _gc[name]; const el=_gsvg&&_gsvg.getElementById(name); if(!el) return _gc[name]=null;
+  const path=new Path2D(); el.querySelectorAll('path').forEach(n=>{const d=n.getAttribute('d');if(d)try{path.addPath(new Path2D(d));}catch(e){}});
+  el.querySelectorAll('polygon,polyline').forEach(n=>{const v=(n.getAttribute('points')||'').trim().split(/[\\s,]+/).map(Number);if(v.length<4)return;let d='M'+v[0]+','+v[1];for(let i=2;i+1<v.length;i+=2)d+='L'+v[i]+','+v[i+1];if(n.tagName.toLowerCase()==='polygon')d+='Z';try{path.addPath(new Path2D(d));}catch(e){}});
+  let bb;try{bb=el.getBBox();}catch(e){bb={x:0,y:0,width:1,height:1};} return _gc[name]={path,x:bb.x,y:bb.y,w:bb.width||1,h:bb.height||1}; }
+function boxGlyph(name, cx, cy, sizePx, col){ const gl=glyphOf(name); if(!gl) return; const s=sizePx/Math.max(gl.w,gl.h);
+  g.save(); g.translate(cx,cy); g.scale(s,s); g.translate(-(gl.x+gl.w/2),-(gl.y+gl.h/2));
+  g.fillStyle=col; g.strokeStyle=col; g.lineJoin='round'; g.lineCap='round'; g.lineWidth=2/s; g.stroke(gl.path); g.fill(gl.path); g.restore(); }
 const c = document.getElementById('c'); c.width = D.W; c.height = D.H;
 const g = c.getContext('2d');
 const tip = (a) => [ M.gate.cx + M.gate.R*M.gate.chevR*Math.cos(a*Math.PI/180),
@@ -133,10 +144,11 @@ function schema(img){
     grp(a.g1x,a.g1n); grp(a.g2x,a.g2n);
     text('-', a.dashX, a.digitTop, a.size, P.white); g.lineWidth=2; }
 
-  // boxes — outlined + bold number
+  // boxes — outlined + bold number + the locked constellation glyph (white line-figure, dialing refs)
   const bx=M.boxes;
   for(let i=0;i<bx.count;i++){ const y=bx.top0+i*bx.stepY; rr(bx.left,y,bx.right-bx.left,bx.h,10); stroke(P.blue,2);
-    text(String(i+1), bx.left+bx.numDX, y+bx.numDY, bx.numSize||30, P.white); }
+    text(String(i+1), bx.left+bx.numDX, y+bx.numDY, bx.numSize||30, P.white);
+    const gn=bx.glyphNames&&bx.glyphNames[i]; if(gn) boxGlyph(gn, (bx.left+bx.right)/2, y+bx.h/2, bx.h*(bx.glyphSize||0.6), P.white); }
 
   // gate — concentric rings + segmented tick band + chevron Vs
   g.strokeStyle=P.white;

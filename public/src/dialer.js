@@ -24,6 +24,7 @@ export function createDialer() {
   let address = ADDRESSES.Abydos, seq = [], buf = "", fast = false, lastLock = 0, onLock = null;
   let glyphAngleFn = null, targets = null;     // targets[i] = ring deg that lands address[i-1] on its chevron
   let segStart = null, rotDur = null, totalDialMs = 0, dwellMs = DWELL, frozenMs = 0;
+  let clock = 0, speedScale = 1, curStep = -1; // clock = injected time (lets main.js pause/step); speedScale = debug speed
   const pad = (n) => String(n).padStart(2, "0");
 
   // Absolute ring rotations that bring each dialed glyph under its locking chevron (LOCK_ORDER),
@@ -48,7 +49,7 @@ export function createDialer() {
   function computeDial() {
     targets = buildTargets();
     if (!targets) { segStart = null; totalDialMs = 0; return; }
-    const speed = fast ? SPEED_FAST : SPEED; dwellMs = fast ? DWELL_FAST : DWELL;
+    const speed = (fast ? SPEED_FAST : SPEED) * speedScale; dwellMs = (fast ? DWELL_FAST : DWELL) / Math.max(0.1, speedScale);
     segStart = [0]; rotDur = []; let acc = 0;
     for (let i = 0; i < 7; i++) { rotDur[i] = Math.abs(targets[i + 1] - targets[i]) / speed; acc += rotDur[i] + dwellMs; segStart[i + 1] = acc; }
     totalDialMs = acc;
@@ -59,18 +60,28 @@ export function createDialer() {
   function freezeStep(n) {
     address = mode === "incoming" ? ADDRESSES.Apophis : ADDRESSES.Abydos;
     computeDial();
-    forced = "dialing"; phase = "dialing"; lockedCount = Math.min(7, Math.max(0, n));
+    forced = "dialing"; phase = "dialing"; lockedCount = Math.min(7, Math.max(0, n)); curStep = lockedCount;
     ringDeg = targets ? targets[lockedCount] : 0;
     frozenMs = segStart ? segStart[lockedCount] : 0;
   }
 
   function start(addr) {
     address = Array.isArray(addr) ? addr : (seq.length === 7 ? seq.slice() : mode === "incoming" ? ADDRESSES.Apophis : ADDRESSES.Abydos);
-    phase = "dialing"; t0 = performance.now(); lockedCount = 0; lastLock = 0; forced = null;
+    phase = "dialing"; t0 = clock; lockedCount = 0; lastLock = 0; forced = null;
     ringDeg = 0; computeDial();
   }
-  function abort() { if (phase === "idle" || phase === "active") { reset(); return; } phase = "aborting"; t0 = performance.now(); }
-  function reset() { phase = "idle"; lockedCount = 0; forced = null; }
+  function abort() { if (phase === "idle" || phase === "active") { reset(); return; } phase = "aborting"; t0 = clock; }
+  function reset() { phase = "idle"; lockedCount = 0; curStep = -1; forced = null; }
+  // skip to the NEXT state in the natural sequence (header forward button while playing)
+  function skip() {
+    if (phase === "idle") start();
+    else if (phase === "dialing") { lockedCount = 7; if (targets) ringDeg = targets[7]; phase = "dialed"; t0 = clock; }
+    else if (phase === "dialed") { phase = "kawoosh"; t0 = clock; onLock && onLock(-1); }
+    else if (phase === "kawoosh") { phase = "active"; t0 = clock; endAt = clock + WORMHOLE_MS; onLock && onLock(-2); }
+    else reset();
+    forced = null;
+  }
+  function setSpeedScale(x) { speedScale = Math.max(0.05, x); }   // applies to the next dial (computeDial)
 
   // manual address entry
   function digit(c) { if (buf.length < 2) buf += c; }
@@ -82,22 +93,25 @@ export function createDialer() {
   }
   function setFast(v) { fast = v; }
   function force(name, secs) {
-    forced = name; phase = name; ringDeg = 0;
+    forced = name; phase = name; ringDeg = 0; curStep = name === "dialing" ? 0 : -1;
     if (name === "idle" || name === "dialing") lockedCount = 0; else lockedCount = 7;
-    if (name === "active") endAt = performance.now() + (secs > 0 ? secs * 1000 : WORMHOLE_MS);
+    if (name === "active") endAt = clock + (secs > 0 ? secs * 1000 : WORMHOLE_MS);
   }
 
   function update(now) {
+    clock = now;                                     // injected time — start/force/skip read this
     if (forced) { if (forced === "active" || forced === "kawoosh") ringDeg += 0.2; return; }
     const dt = now - t0;
+    curStep = -1;
     if (phase === "dialing") {
       if (!targets) {                                  // fallback: free spin on fixed cadence
         const step = Math.min(7, Math.floor(dt / (fast ? LOCK_FAST : LOCK_MS)));
-        lockedCount = step; ringDeg += (step % 2 ? -1 : 1) * (fast ? 3 : 1.5);
+        lockedCount = step; curStep = step; ringDeg += (step % 2 ? -1 : 1) * (fast ? 3 : 1.5);
         if (lockedCount > lastLock) { lastLock = lockedCount; onLock && onLock(lockedCount); }
         if (lockedCount >= 7) { phase = "dialed"; t0 = now; }
       } else {
         let step = 0; while (step < 7 && dt >= segStart[step + 1]) step++;
+        curStep = step;
         if (step >= 7) { lockedCount = 7; ringDeg = targets[7]; }
         else {
           const local = dt - segStart[step];
@@ -122,7 +136,7 @@ export function createDialer() {
     return { kawoosh, eh, pulse: 0.5 + 0.5 * Math.sin(now / 260) };
   }
 
-  function state(now = performance.now()) {
+  function state(now = clock) {
     const d = new Date();
     const dir = mode === "incoming" ? "INCOMING" : "OUTGOING";
     const ph = (phase === "idle" && (seq.length || buf)) ? "entry" : phase;
@@ -132,9 +146,11 @@ export function createDialer() {
     const elapsed = dialing ? (forced ? frozenMs : Math.min(now - t0, totalDialMs || (now - t0))) : 0;
     return {
       phase: ph, rawPhase: phase, mode, lockedCount, ringDeg, fast, countdown: countdown(now), status, t: now,
+      targetIdx: curStep,                                                                          // chevron index being rotated to (−1 idle)
       timerFrac: phase === "active" ? Math.max(0, Math.min(1, (endAt - now) / WORMHOLE_MS)) : 1,   // 38-min gauge: 1→0
       dialClock: dialing ? `${pad(Math.floor(elapsed / 1000))}.${String(Math.floor(elapsed % 1000)).padStart(3, "0")}` : null,
       address, heroIdx, seq: seq.slice(), buf, ...effects(now),
+      clockHMS: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
       clockHHMM: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
       date: `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`,
       day: DAYS[d.getDay()],
@@ -148,8 +164,9 @@ export function createDialer() {
 
   return {
     start, abort, reset, force, update, state, digit, back, enter, clearSeq, setFast, setGlyphAngle, freezeStep,
+    skip, setSpeedScale,
     set onLock(f) { onLock = f; },
-    get phase() { return phase; }, get fast() { return fast; },
+    get phase() { return phase; }, get fast() { return fast; }, get speedScale() { return speedScale; },
     set mode(m) { mode = m; }, get mode() { return mode; },
   };
 }

@@ -13,6 +13,9 @@
 <link rel="icon" href="./icons/icon-192.png" />
 <link rel="apple-touch-icon" href="./icons/icon-512.png" />
 
+<!-- preload the gate vector so it is ready as soon as main.js mounts it (stripped in dist, which inlines it) -->
+<link rel="preload" href="./assets/gate.svg" as="fetch" crossorigin="anonymous" />
+
 <!-- jsdelivr ONLY: the preview CSP whitelists cdn.jsdelivr.net/npm/, unpkg is blocked. -->
 <script type="importmap">
 {
@@ -34,6 +37,12 @@
   body { font-family: var(--mono); color: #eaf2ff; -webkit-user-select: none; user-select: none; }
 
   #app { position: fixed; inset: 0; }
+
+  /* Loading reveal: gate/hud/logo start hidden, fade/scale in once main.js adds #app.ready. */
+  #gate-host, #hud, #logo { opacity: 0; transition: opacity .55s ease; }
+  #gate-host { transition: opacity .7s ease, transform .7s ease; transform: scale(.985); }
+  #app.ready #gate-host { opacity: 1; transform: scale(1); }
+  #app.ready #hud, #app.ready #logo { opacity: 1; }
 
   /* The authentic gate vector, recolored. Sits under the HUD canvas. */
   #gate-host { position: absolute; inset: 0; z-index: 1; pointer-events: none;

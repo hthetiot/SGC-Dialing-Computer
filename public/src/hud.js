@@ -8,6 +8,16 @@
 import { LOCK_ORDER, GLYPHS } from "./addresses.js";
 import { getGlyph } from "./gate.js";
 
+// the 3 header transport buttons (◀◀ reset/step-back · play/pause · ▶▶ skip/step) — exported so
+// main.js can hit-test the same rects it sees drawn. Design-space rects (mapped through M).
+export function transportRects(L) {
+  const h = L.header, x = h.transportX ?? 200, y = (h.transportY ?? 116) - 6, w = 30, ht = 28, gap = 40;
+  return [{ id: "back", x, y, w, h: ht }, { id: "play", x: x + gap, y, w, h: ht }, { id: "fwd", x: x + 2 * gap, y, w, h: ht }];
+}
+
+// rolling history for the sidebar telemetry mini-charts (persists across frames)
+const HIST = { fps: [], loop: [], spd: [], idx: [], hud: [], gate: [] };
+
 // draw a gate-svg glyph (Path2D in svg units) centred at design (cxD,cyD), fitted to sizeD design px
 function drawGlyph(g, M, name, cxD, cyD, sizeD, col, strokePx) {
   const gl = getGlyph(name); if (!gl) return;
@@ -21,7 +31,7 @@ function drawGlyph(g, M, name, cxD, cyD, sizeD, col, strokePx) {
   g.restore();
 }
 
-export function drawHud(g, M, L, st) {
+export function drawHud(g, M, L, st, metrics = {}) {
   const S = L.style.schema;
   const P = { bg: S.bg, blue: S.line, cyan: S.text, white: S.white, dim: S.dim, red: S.red, glow: S.glow, panel: S.panel };
   const X = M.x, Y = M.y, sc = M.s, lock = st.lockedCount || 0;
@@ -43,9 +53,18 @@ export function drawHud(g, M, L, st) {
   g.strokeStyle = P.blue; g.lineWidth = lw(2); line(L.rail.x, 135, L.rail.x, f.y1 - 20);
   // logo bay
   rect(L.logoBay.x, L.logoBay.y, L.logoBay.w, L.logoBay.h, 8); stroke(P.blue, 2);
-  // header panel + transport
+  // header panel + functional transport buttons (◀◀ reset/back · play/pause · ▶▶ skip/step)
   const hd = L.header; rect(hd.panelX0, hd.panelY0, hd.panelX1 - hd.panelX0, hd.panelY1 - hd.panelY0, 10); stroke(P.blue, 2);
-  text(hd.transport, hd.transportX, hd.transportY, 16, P.cyan);
+  for (const b of transportRects(L)) {
+    rect(b.x, b.y, b.w, b.h, 5); stroke(P.blue, 1.5);
+    g.fillStyle = P.cyan; const cx = X(b.x + b.w / 2), cy = Y(b.y + b.h / 2), s2 = 5.5 * sc;
+    const tri = (px, dir) => { g.beginPath(); g.moveTo(px - dir * s2, cy - s2); g.lineTo(px + dir * s2, cy); g.lineTo(px - dir * s2, cy + s2); g.closePath(); g.fill(); };
+    if (b.id === "play") {
+      if (metrics.paused) tri(cx - s2 * 0.4, 1);                                  // ▶ (resume)
+      else { g.fillRect(cx - s2 * 0.9, cy - s2, s2 * 0.7, s2 * 2); g.fillRect(cx + s2 * 0.2, cy - s2, s2 * 0.7, s2 * 2); }  // ▌▌
+    } else if (b.id === "back") { tri(cx + s2 * 0.2, -1); tri(cx + s2 * 1.4, -1); }  // ◀◀
+    else { tri(cx - s2 * 1.4, 1); tri(cx - s2 * 0.2, 1); }                          // ▶▶
+  }
 
   // binary-dot panels — a sparse white/blue field of data dots with a bright cyan scan band that
   // sweeps along the zone's long axis (the "loading"/data-stream look from the source captures).
@@ -77,19 +96,36 @@ export function drawHud(g, M, L, st) {
   const low = !!(st.countdown && st.countdown.startsWith("00:"));
   g.strokeStyle = "rgba(70,120,210,.22)"; g.lineWidth = lw(8); arc(t.cx, t.cy, t.r, a0, a1); g.stroke();
   if (frac > 0.001) { g.strokeStyle = low ? P.red : P.blue; g.lineWidth = lw(8); if (low) { g.shadowColor = P.red; g.shadowBlur = 8 * sc; } arc(t.cx, t.cy, t.r, a0, a0 + frac * (a1 - a0)); g.stroke(); g.shadowBlur = 0; }
+  // remainingTime counter bar sitting BEHIND the date (depletes with the 38-min gauge)
+  { const bw = 132, bh = 24, bx0 = t.cx - bw / 2, x0 = X(bx0), yb = Y(t.dateY - 3);
+    g.fillStyle = "rgba(50,110,200,.16)"; rrS(x0, yb, X(bx0 + bw) - x0, bh * sc, 4 * sc); g.fill();
+    g.fillStyle = low ? "rgba(255,70,64,.34)" : "rgba(40,140,235,.34)"; rrS(x0, yb, (X(bx0 + bw) - x0) * frac, bh * sc, 4 * sc); g.fill(); }
   g.textAlign = "center";
-  text(st.clockHHMM, t.cx, t.clockY, 33, P.cyan); text(st.date, t.cx, t.dateY, 24, P.cyan); text(st.day, t.cx, t.dayY, 26, P.cyan);
+  text(st.clockHMS || st.clockHHMM, t.cx, t.clockY, 27, P.cyan); text(st.date, t.cx, t.dateY, 24, P.cyan); text(st.day, t.cx, t.dayY, 26, P.cyan);
   g.textAlign = "left";
 
-  // numbers grid + sparklines (wavy line + baseline)
-  const n = L.numbers;
-  for (let r = 0; r < n.rows; r++) for (let cc = 0; cc < n.cols; cc++) {
-    const x = n.x0 + cc * n.colGap, y = n.y0 + r * n.rowGap;
-    text(String(n.values[r][cc]), x, y, n.size || 22, P.white);
-    const sx = n.sparkX + cc * n.sparkColGap, sy = y + n.sparkDown, sw = n.sparkW, seed = r * 3 + cc;
-    g.strokeStyle = P.text; g.lineWidth = lw(1.2); g.beginPath(); g.moveTo(X(sx), Y(sy));
-    for (let m = 1; m <= 12; m++) { const tt = seed + m * 5, b = tt % 9 < 2 ? -5 : tt % 5 < 2 ? -2 : 0; g.lineTo(X(sx + m * sw / 12), Y(sy + b)); }
-    g.stroke(); g.beginPath(); g.moveTo(X(sx), Y(sy + n.sparkBase)); g.lineTo(X(sx + sw), Y(sy + n.sparkBase)); g.stroke();
+  // live telemetry — 6 metrics, each a label + value + a rolling history mini-chart (replaces the
+  // old static numbers grid). Laid out in the same 2×3 grid anchors from layout.json.
+  const n = L.numbers, m = metrics || {};
+  const ROWS = [
+    ["fps", "FPS", `fps ${(m.fps | 0)}`], ["loop", "LOOP", `${(m.loopMs || 0).toFixed(1)}ms`],
+    ["spd", "GATE °/f", `${(m.gateSpeed || 0).toFixed(1)}°`], ["idx", "TGT IDX", `i${m.targetIdx ?? -1}`],
+    ["hud", "HUD ms", `${(m.hudMs || 0).toFixed(2)}`], ["gate", "GATE ms", `${(m.gateMs || 0).toFixed(2)}`],
+  ];
+  const sparkHist = (h, sx, sy, sw, ht) => {
+    if (!h || h.length < 2) return; const mn = Math.min(...h), mx = Math.max(...h), rng = (mx - mn) || 1;
+    g.strokeStyle = P.text; g.lineWidth = lw(1.2); g.beginPath();
+    h.forEach((v, k) => { const px = X(sx + (k / (h.length - 1)) * sw), py = Y(sy - ((v - mn) / rng) * ht); k ? g.lineTo(px, py) : g.moveTo(px, py); });
+    g.stroke();
+  };
+  for (let i = 0; i < 6; i++) {
+    const col = i % 2, row = (i / 2) | 0, x = n.x0 + col * n.colGap, y = n.y0 + row * n.rowGap;
+    const [key, label, val] = ROWS[i], raw = [m.fps, m.loopMs, m.gateSpeed, m.targetIdx, m.hudMs, m.gateMs][i] || 0;
+    const buf = HIST[key]; buf.push(raw); if (buf.length > 30) buf.shift();
+    text(label, x, y - 13, 10, "rgba(150,190,255,.65)");
+    text(val, x, y, 17, P.white);
+    sparkHist(buf, n.sparkX + col * n.sparkColGap, y + n.sparkDown, n.sparkW, 13);
+    g.strokeStyle = "rgba(120,160,230,.35)"; g.lineWidth = lw(1); line(n.sparkX + col * n.sparkColGap, y + n.sparkDown + 3, n.sparkX + col * n.sparkColGap + n.sparkW, y + n.sparkDown + 3);
   }
   M.setY("auto");
 
@@ -114,9 +150,25 @@ export function drawHud(g, M, L, st) {
   if (st.countdown) text(st.countdown, ft.readout.x + 30, ry, 44, st.countdown.startsWith("00:") ? P.red : P.cyan);
   else if (st.dialClock) text(st.dialClock, ft.readout.x + 30, ry, 44, P.cyan);
   g.textBaseline = "top";
-  { const a = ft.auth, digits = a.text.replace("-", ""); let di = 0; g.strokeStyle = P.blue; g.lineWidth = lw(1.5);
-    const grp = (gx, cnt) => { for (let i = 0; i < cnt; i++) { const cx = gx + i * a.cellW, x0 = X(cx); g.strokeRect(x0, Y(a.cellTop), X(cx + a.cellW) - x0, Y(a.cellTop + a.cellH) - Y(a.cellTop)); text(digits[di++] || "", cx + a.cellW / 2 - a.size * 0.28, a.digitTop, a.size, P.white); } };
-    grp(a.g1x, a.g1n); grp(a.g2x, a.g2n); text("-", a.dashX, a.digitTop, a.size, P.white); }
+  // auth block — ONE fixed unit below the footer, centred on the console mid-line: the LABEL sits to
+  // the LEFT of the code cells and USER/SYS stack to the RIGHT (flanking the number, like the target).
+  // A force-centred X map (cxs) keeps the whole block scaling as a unit so it never stretches.
+  { const a = ft.auth, cx = 745.5, cw = a.cellW, n1 = a.g1n, n2 = a.g2n, digits = a.text.replace("-", "");
+    const totalW = (n1 + n2 + 1) * cw, startX = cx - totalW / 2, cyB = 1016, chB = 28, midY = cyB + chB / 2;
+    const cxs = (dx) => M.vw / 2 + (dx - cx) * sc;
+    const ctext = (s, dx, dy, size, col, al, base) => { g.textAlign = al || "left"; g.textBaseline = base || "top"; g.font = `${size * sc}px "DejaVu Sans Mono","Consolas",monospace`; g.fillStyle = col; g.fillText(s, cxs(dx), Y(dy)); };
+    g.strokeStyle = P.blue; g.lineWidth = lw(1.5);
+    let di = 0;
+    for (let i = 0; i < n1 + n2; i++) {                       // centred code cells
+      const slot = i < n1 ? i : i + 1, cxx = startX + slot * cw, x0 = cxs(cxx);
+      rrS(x0, Y(cyB), cxs(cxx + cw) - x0, chB * sc, 3 * sc); g.stroke();
+      ctext(digits[di++] || "", cxx + cw / 2, midY, 19, P.white, "center", "middle");
+    }
+    ctext("-", startX + (n1 + 0.5) * cw, midY, 19, P.cyan, "center", "middle");
+    ctext("AUTHORIZATION CODE:", startX - 16, midY, 15, "rgba(150,190,255,.85)", "right", "middle");   // LEFT of cells
+    ctext("USER: SGT. W HARRIMAN", startX + totalW + 16, cyB + 9, 13, P.cyan, "left", "middle");        // RIGHT of cells
+    ctext("SYS: NOMINAL", startX + totalW + 16, cyB + 24, 13, P.cyan, "left", "middle");
+    g.textAlign = "left"; g.textBaseline = "top"; }
   M.setY("auto");   // end of bottom-pinned panels; boxes/circuits/gate use the centred band
 
   // boxes — outline + bold number; the locked constellation glyph fills the box (active refs)
@@ -175,8 +227,9 @@ export function drawHud(g, M, L, st) {
 
   // texts — clock/date/day/status are live. Left-column labels pin to their panel's edge (top/bottom)
   // so they travel with the numbers/checklist panels; everything else uses the centred band.
+  const SKIP = new Set(["clock", "date", "day", "authLabel", "user", "sys"]);   // drawn in the gauge / auth block
   for (const tt of (L.texts || [])) {
-    if (tt.id === "clock" || tt.id === "date" || tt.id === "day") continue;   // drawn centred in the timer gauge
+    if (SKIP.has(tt.id)) continue;
     const s = tt.id === "status" ? (st.status || tt.t) : tt.t;
     M.setY(tt.x < 428 ? (tt.y < 537 ? "top" : "bot") : "auto");   // 428 = left column (GL); 537 = design cy
     text(s, tt.x, tt.y, tt.size || 14, P.cyan);

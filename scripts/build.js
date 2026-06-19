@@ -45,6 +45,8 @@ async function main() {
   // 3. Compose index.html from the dev template, swapping the module script for the
   //    inlined globals + bundle, and pointing the manifest/sw to the flat dist paths.
   let html = await readFile(PUB + "index.html", "utf8");
+  // the gate is inlined as a global in dist, so drop the dev-only preload (it would 404 here).
+  html = html.replace(/\s*<link rel="preload"[^>]*gate\.svg[^>]*>/i, "");
 
   const inlineHead = `
   <script id="sgc-assets">

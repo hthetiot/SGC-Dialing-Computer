@@ -5,7 +5,7 @@
 // Deep-link ?state=idle|dialing|dialed|kawoosh|active forces a phase (used by scripts/capture.js).
 
 import { makeScreen } from "./screen.js";
-import { drawHud } from "./hud.js";
+import { drawHud, transportRects } from "./hud.js";
 import { mountGate, setLayout as gateSetLayout, setRotation as gateSetRotation, setLitChevrons as gateSetLit, glyphAngle } from "./gate.js";
 import { initLogo, resizeLogo, renderLogo } from "./logo.js";
 import { createDialer } from "./dialer.js";
@@ -17,6 +17,15 @@ const hud = document.getElementById("hud"), g = hud.getContext("2d");
 const logoCanvas = document.getElementById("logo"), host = document.getElementById("gate-host");
 
 let L, dialer, dbg, dpr = 1, demoAt = 0;
+// virtual clock — the dialer is driven by `vnow`, which only advances when not paused (so the
+// transport can pause/step the whole animation deterministically).
+let paused = false, vnow = 0, lastReal = 0, stepMs = 0, prevRing = 0, frames = 0, fpsAt = 0;
+const metrics = { fps: 0, loopMs: 0, hudMs: 0, gateMs: 0, gateSpeed: 0, targetIdx: -1, paused: false };
+const transport = {
+  toggle: () => { paused = !paused; metrics.paused = paused; },               // play/pause the loop
+  forward: () => { if (paused) stepMs += 1000 / 60; else dialer.skip(); },     // paused: step a frame · playing: skip a state
+  back: () => { if (paused) stepMs -= 1000 / 60; else { dialer.reset(); demoAt = vnow + 700; } }, // paused: step back · playing: reset
+};
 
 async function boot() {
   // dist inlines layout as a global (self-contained build); dev fetches the file.
@@ -49,17 +58,21 @@ async function boot() {
     else if (k === "a") { dialer.mode = "incoming"; dialer.start(); }
     else if (k === "f") dialer.setFast(!dialer.fast);                         // fast dial
     else if (k === "c") dialer.clearSeq();
+    else if (k === "p") transport.toggle();                                   // pause/resume the loop
     else if (k === "d") dbg.toggle();
   });
-  // click the SGC logo emblem -> debug panel. The #logo canvas is pointer-events:none, so hit-test
-  // the logo-bay rect at the document level instead of relying on canvas layering.
+  // pointer hit-tests (document-level, since #hud/#logo don't capture): the 3 header transport
+  // buttons first, then the SGC logo bay (toggles the debug panel).
   addEventListener("pointerdown", (e) => {
-    const M = makeScreen(innerWidth, innerHeight), lb = L.logoBay;
-    if (e.clientX >= M.x(lb.x) && e.clientX <= M.x(lb.x + lb.w) && e.clientY >= M.y(lb.y) && e.clientY <= M.y(lb.y + lb.h)) dbg.toggle();
+    const M = makeScreen(innerWidth, innerHeight);
+    const hit = (r) => e.clientX >= M.x(r.x) && e.clientX <= M.x(r.x + r.w) && e.clientY >= M.y(r.y) && e.clientY <= M.y(r.y + r.h);
+    for (const b of transportRects(L)) if (hit(b)) { ({ back: transport.back, play: transport.toggle, fwd: transport.forward })[b.id](); return; }
+    if (hit(L.logoBay)) dbg.toggle();
   });
   addEventListener("resize", resize);
   resize();
-  document.getElementById("boot")?.remove();
+  document.getElementById("app")?.classList.add("ready");   // reveal: triggers the gate/hud/logo CSS fade-in
+  setTimeout(() => document.getElementById("boot")?.remove(), 650);
   if (!forced) demoAt = performance.now() + 2500;   // auto-demo: kick off a dial shortly after load
   requestAnimationFrame(loop);
 }
@@ -77,18 +90,34 @@ function resize() {
 }
 
 function loop() {
-  const now = performance.now();
-  if (demoAt && now > demoAt) { dialer.start(); demoAt = 0; }   // start() = default address (Abydos); never pass the mode here
-  dialer.update(now);
-  const st = dialer.state(now);
+  const real = performance.now();
+  if (!lastReal) { lastReal = real; vnow = real; }
+  if (!paused) vnow += real - lastReal;        // advance virtual time only while playing
+  lastReal = real;
+  if (stepMs) { vnow += stepMs; stepMs = 0; }   // single-frame step (forward/back while paused)
+
+  if (demoAt && vnow > demoAt && !paused) { dialer.start(); demoAt = 0; }   // auto-demo (default Abydos)
+  dialer.update(vnow);
+  const st = dialer.state(vnow);
+  metrics.gateSpeed = Math.abs(st.ringDeg - prevRing); prevRing = st.ringDeg;   // deg/frame
+  metrics.targetIdx = st.targetIdx;
+
   const vw = innerWidth, vh = innerHeight, M = makeScreen(vw, vh);
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, vw, vh);                 // transparent — lets the gate SVG (below) show through
-  drawHud(g, M, L, st);
+  const hudStart = performance.now();
+  drawHud(g, M, L, st, metrics);
+  metrics.hudMs = performance.now() - hudStart;
 
+  const gateStart = performance.now();
   gateSetRotation(st.ringDeg);
   gateSetLit(LOCK_ORDER.slice(0, st.lockedCount || 0));   // turn engaged chevrons red on the SVG
-  renderLogo(now / 1000);
+  metrics.gateMs = performance.now() - gateStart;
+
+  renderLogo(vnow / 1000);
+  metrics.loopMs = performance.now() - real;
+  frames++;
+  if (real - fpsAt >= 250) { metrics.fps = Math.round((frames * 1000) / (real - fpsAt)); frames = 0; fpsAt = real; }
   requestAnimationFrame(loop);
 }
 

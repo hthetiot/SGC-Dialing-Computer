@@ -77,26 +77,10 @@ The measurement loop (probe → grid → zoom → trace) reads `source/mask.png`
 - **`tmp/<script>/…`** holds outputs, one subfolder per script, filenames carrying their params.
   Nothing else lives loose in `tmp/`.
 
-### Mask-based measurement (USE THIS for layout numbers)
-Measure `source/mask.png`, not the photo. All §2 numbers were read from it.
-- `node scripts/probe.js row <y>|col <x>|px <x> <y> mask.png` — auto-inverts when the filename
-  contains "mask" (white-on-black internally) so bright = HUD line. Default file = target.png.
-- `node scripts/grid.js` → `tmp/grid/grid.png` — mask + a faint 100px coordinate ruler (tick
-  crosses + tiny labels; NO bold gridlines — those got misread as geometry).
-  `node scripts/grid.js tiles [cols rows z]` → `tmp/grid/tile_r{r}_c{c}.png` labeled tiles for
-  systematic tile-by-tile reading (read coordinates straight off the ruler, never guess an area).
-- `node scripts/zoom.js <file> [x y w h] [z]` → `tmp/zoom/<stem>_x_y_w_h_z.png` (params in name).
-  `<file>` resolves from `source/` then `tmp/` (tmp may include a subfolder, e.g. `mask/over.png`).
-- `node scripts/trace.js [target|mask|raw]` → `tmp/trace/trace_<arg>.png` — VALIDATION overlay:
-  the whole vector model from `source/trace.json` in distinct colours + legend, over the brightened target
-  (default) / dimmed crisp **mask** / black (`raw`). Confirm every line/path here.
-- `node scripts/trace.js schema` → `tmp/trace/schema.png` — PREVIEW: a filled, SGC-styled render of
-  `source/trace.json` on dark navy (blue frame, cyan text, gate rings, red checklist bars, …). This is the
-  "figma": what the HUD will look like, straight from the data.
-- `node scripts/trace.js match [opacity]` → `tmp/trace/match.png` — the schema preview overlaid on
-  the real target at `opacity` (default 0.62) to confirm it lines up. e.g. `… match 0.5`.
-
-(`mask.js` and `circuits.js` were removed — folded into `probe.js` auto-invert and `trace.js mask`.)
+### Mask-based measurement
+All §2 numbers were read from `source/mask.png` (not the photo). **The measurement/preview/verify
+tooling — `probe`, `grid`, `zoom`, `trace.js`, `capture`, `diff` — lives in
+[PIPELINE.md](PIPELINE.md).** SPECS only records the resulting facts; PIPELINE records how to get them.
 
 ### `source/trace.json` (THE design source — the "figma" for the HUD)
 All HUD geometry in **target pixels (1491×1074)**, measured from the mask: every element is a
@@ -338,7 +322,59 @@ preview` · `bun run lint`. Controls: Space = dial/abort · M = toggle mode · A
 (Apophis) · click the SGC logo = show/hide the debug panel.
 
 ### Responsive rule
-Designed at aspect **1.25:1** (1000×800). At that aspect the layout is pixel-faithful to the
-reference. On other aspects, panels anchor to the true viewport edges (binary/checklist left,
-result-box column + DESTINATION/SYS right) and the gate radius is clamped to fit, so wide and
-mobile screens fill naturally instead of stretching.
+The GATE stays centred (`screen.js` `M.gate`, design centre 743,513). Everything else anchors to
+the nearest viewport edge so extra space opens in the gaps, not by stretching art. Side panels pin
+as **units at fixed height** via a settable y-anchor (`M.setY('top'|'bot'|'auto')`): numbers/timer
+→ top-left (below header+logo), checklist → bottom-left, footer → bottom. At the design aspect all
+anchors coincide → pixel-faithful.
+
+---
+
+## 7. Current build requirements (target state — implemented unless marked ⏳)
+
+### Debug
+- **Speed range** (⏳): a slider covering slow→fast, wired to a dialer **speed scale** that
+  multiplies the constant rotation speed (and inversely the lock dwell). Keep the `fast` preset.
+
+### HUD — auth block
+- The AUTHORIZATION label + the segmented code + `USER:` + `SYS:` are **ONE block ("auth")**,
+  **centred below the footer**, **fixed width (does not grow)**, with label/number/USER/SYS all
+  **aligned** on a shared grid. (⏳ — currently three separate left/right anchored pieces.)
+
+### Sidebar (the left numbers/timer panel) — now a live telemetry panel
+- **Clock**: current time **HH:MM:SS** + **date** + **day-of-week** (seconds now shown).
+- **remainingTime chart**: a horizontal **counter bar drawn behind the date**, fed by the 38-min
+  `timerFrac`.
+- **Six live metric rows**, each a number + a mini sparkline/bar below it:
+  1. **FPS** (prefix `fps`) · 2. **render-loop duration** (ms) · 3. **gate rotation speed**
+  (deg/frame) · 4. **target index** of the current rotation distance · 5. **HUD render time** (ms)
+  · 6. **gate render time** (ms). (⏳ — replaces the static 2×3 placeholder numbers grid.)
+
+### Header — transport controls (functional; ⏳)
+Three buttons (currently the static `◀◀ ▶ ▶▶` glyphs):
+- **Play/Pause** — toggles the rAF animation loop; icon reflects state (▶ when paused, ▌▌ when
+  playing). Paused freezes the gate/HUD; play resumes.
+- **Fast-forward (◀◀ / reset)** — *paused*: step one frame **back**; *playing*: **reset** the gate
+  state to zero (re-arm the dial).
+- **Forward (▶▶ / step)** — *paused*: advance **one frame**; *playing*: **skip to the next state**.
+
+### Gate loading (⏳)
+The gate is still the **SVG**, but **inlined in `index.html`** so it is part of the initial paint
+(with a `preload`/eager hint), then a **minor CSS fade/scale transition** reveals it once `main.js`
+is ready. Removes the blank-gate flash on load.
+
+### Rendering direction — **ThreeJs all the way** (⏳, the major migration)
+The 2D-canvas HUD is too slow on low-power targets (Raspberry Pi, modern smart-TV browsers) where
+it should not be. **Move HUD rendering to Three.js/WebGL** so we can lean on the GPU, write
+**shader effects**, and use **generated textures / charts** at a high, stable FPS. Phased plan:
+1. **Composite swap** — keep the existing 2D draw functions but render them into an offscreen
+   canvas → upload as a `CanvasTexture` on a fullscreen ortho quad. Immediate compositing win;
+   gate emblem already in the same renderer.
+2. **Static vs dynamic split** — bake the static layers (frame, panels, labels, box outlines,
+   auth) to a texture **once per resize**; only re-upload the dynamic layers (timer, dots,
+   circuits, glyphs, sidebar metrics, gate effects) per frame.
+3. **Native WebGL layers** — replace the hottest dynamic layers (event horizon, kawoosh, binary
+   dots, sparkline charts) with **shader materials / instanced geometry**; SDF/atlas text for
+   labels. Keep `screen.js` anchoring and `layout.json` as the coordinate source of truth.
+The gate ring itself stays the SVG (reliable everywhere, no GPU needed); the orthographic camera
+already aligns WebGL 1:1 with the HUD coordinate space.

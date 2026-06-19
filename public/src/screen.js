@@ -12,11 +12,17 @@ export function makeScreen(vw, vh) {
   const W = DESIGN.w, H = DESIGN.h;
   // design x -> screen x, auto-anchored by region
   const x = (dx) => dx < GL ? dx * s : dx > GR ? vw - (W - dx) * s : vw / 2 + (dx - W / 2) * s;
-  const y = (dy) => dy < GT ? dy * s : dy > GB ? vh - (H - dy) * s : vh / 2 + (dy - H / 2) * s;
+  // y has a settable anchor so a whole side panel pins to one edge as a UNIT (fixed height), instead
+  // of straddling the centre band: 'top' = below the header, 'bot' = above the footer edge, 'auto' =
+  // region band (used by the gate + everything that connects to it). Reset to 'auto' after each panel.
+  let yMode = "auto";
+  const yAuto = (dy) => dy < GT ? dy * s : dy > GB ? vh - (H - dy) * s : vh / 2 + (dy - H / 2) * s;
+  const y = (dy) => yMode === "top" ? dy * s : yMode === "bot" ? vh - (H - dy) * s : yAuto(dy);
   return {
     s, x, y, vw, vh,
+    setY: (m) => { yMode = m; },
     pt: (p) => [x(p[0]), y(p[1])],
     // gate sits at its mapped design centre (743,513 — slightly above geometric centre), radius scaled
-    gate: (L) => ({ cx: x(L.gate.cx), cy: y(L.gate.cy), R: L.gate.R * s }),
+    gate: (L) => ({ cx: x(L.gate.cx), cy: yAuto(L.gate.cy), R: L.gate.R * s }),
   };
 }

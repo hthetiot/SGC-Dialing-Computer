@@ -58,6 +58,8 @@ export function drawHud(g, M, L, st) {
     for (let j = 0; j < z.rows; j++) for (let i = 0; i < z.cols; i++) if (((i * 7 + j * 13 + (z.seed || 0) * 5) % 5) < 2) { const d = 3 * sc; g.fillRect(X(z.x + i * cw + cw / 2) - d / 2, Y(z.y + j * ch + ch / 2) - d / 2, d, d); }
   }
 
+  // numbers/timer panel — pinned top-left (below header+logo), fixed height
+  M.setY("top");
   // timer arc
   const t = L.timer; g.strokeStyle = P.blue; g.lineWidth = lw(8); arc(t.cx, t.cy, t.r, -Math.PI * 0.16, Math.PI * 1.16); g.stroke();
 
@@ -71,8 +73,10 @@ export function drawHud(g, M, L, st) {
     for (let m = 1; m <= 12; m++) { const tt = seed + m * 5, b = tt % 9 < 2 ? -5 : tt % 5 < 2 ? -2 : 0; g.lineTo(X(sx + m * sw / 12), Y(sy + b)); }
     g.stroke(); g.beginPath(); g.moveTo(X(sx), Y(sy + n.sparkBase)); g.lineTo(X(sx + sw), Y(sy + n.sparkBase)); g.stroke();
   }
+  M.setY("auto");
 
-  // checklist — panel + 7 rows; red bar for locked/dialing rows, "OK" beside locked
+  // checklist — pinned bottom-left, fixed height; 7 rows, red bar for locked/dialing rows, "OK" beside locked
+  M.setY("bot");
   const cl = L.checklist; g.fillStyle = P.panel; rect(cl.x, cl.y, cl.w, cl.h, 8); g.fill(); stroke(P.blue, 2);
   g.strokeStyle = P.blue; g.lineWidth = lw(1.5); line(cl.rightTabX, cl.y, cl.rightTabX, cl.y + cl.h);
   const live = st.phase === "dialing" || st.phase === "dialed" || st.phase === "active" || st.phase === "kawoosh";
@@ -95,6 +99,7 @@ export function drawHud(g, M, L, st) {
   { const a = ft.auth, digits = a.text.replace("-", ""); let di = 0; g.strokeStyle = P.blue; g.lineWidth = lw(1.5);
     const grp = (gx, cnt) => { for (let i = 0; i < cnt; i++) { const cx = gx + i * a.cellW, x0 = X(cx); g.strokeRect(x0, Y(a.cellTop), X(cx + a.cellW) - x0, Y(a.cellTop + a.cellH) - Y(a.cellTop)); text(digits[di++] || "", cx + a.cellW / 2 - a.size * 0.28, a.digitTop, a.size, P.white); } };
     grp(a.g1x, a.g1n); grp(a.g2x, a.g2n); text("-", a.dashX, a.digitTop, a.size, P.white); }
+  M.setY("auto");   // end of bottom-pinned panels; boxes/circuits/gate use the centred band
 
   // boxes — outline + bold number; the locked constellation glyph fills the box (active refs)
   const bx = L.boxes, addr = st.address || [];
@@ -142,17 +147,22 @@ export function drawHud(g, M, L, st) {
     g.shadowBlur = 0;
   }
 
-  // manual-entry readout: the address being typed (seq committed + current buffer)
+  // manual-entry readout: the address being typed (seq committed + current buffer) — in the footer box
   if (st.phase === "entry") {
+    M.setY("bot");
     const seqStr = (st.seq || []).map((i) => i + 1).join(" "), cur = st.buf ? ` [${st.buf}]` : " [_]";
     text("ADDR: " + seqStr + cur, L.footer.readout.x + 20, L.footer.readout.y + L.footer.readout.h / 2 - 12, 26, P.cyan);
+    M.setY("auto");
   }
 
-  // texts — clock/date/day/status are live
+  // texts — clock/date/day/status are live. Left-column labels pin to their panel's edge (top/bottom)
+  // so they travel with the numbers/checklist panels; everything else uses the centred band.
   for (const tt of (L.texts || [])) {
     let s = tt.t;
     if (tt.id === "clock") s = st.clockHHMM || s; else if (tt.id === "date") s = st.date || s;
     else if (tt.id === "day") s = st.day || s; else if (tt.id === "status") s = st.status || s;
+    M.setY(tt.x < 428 ? (tt.y < 537 ? "top" : "bot") : "auto");   // 428 = left column (GL); 537 = design cy
     text(s, tt.x, tt.y, tt.size || 14, P.cyan);
   }
+  M.setY("auto");
 }

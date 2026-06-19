@@ -9,7 +9,6 @@
     "serve": "bun run scripts/serve.js",
     "preview": "SERVE_DIST=1 bun run scripts/serve.js",
     "build": "bun run scripts/build.js",
-
     "layout": "node -e \"require('fs').copyFileSync('source/trace.json','public/assets/layout.json')\"",
     "clean": "node scripts/clean.js",
     "trace": "node scripts/trace.js",
@@ -20,7 +19,6 @@
     "grid:tiles": "node scripts/grid.js tiles",
     "probe": "node scripts/probe.js",
     "zoom": "node scripts/zoom.js",
-
     "capture": "bun run scripts/capture.js",
     "diff": "bun run scripts/diff.js",
     "lint": "eslint \"public/src/**/*.js\" \"scripts/**/*.js\"",

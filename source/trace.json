@@ -28,7 +28,7 @@
     { "id": "header-mid", "x": 480, "y": 24, "w": 430, "h": 70, "cols": 22, "rows": 5, "corners": ["tr", "br"], "seed": 7 },
     { "id": "header-tr", "x": 1404, "y": 20, "w": 44, "h": 80, "cols": 2, "rows": 5, "corners": ["tr", "br"], "seed": 3 },
     { "id": "footer-left", "x": 30, "y": 1012, "w": 22, "h": 48, "cols": 1, "rows": 3, "corners": ["tl", "bl"], "seed": 5 },
-    { "id": "footer-right", "x": 1162, "y": 892, "w": 18, "h": 105, "cols": 1, "rows": 4, "corners": ["tl", "bl"], "seed": 9 }
+    { "id": "footer-right", "x": 1162, "y": 888, "w": 18, "h": 113, "cols": 1, "rows": 5, "corners": ["tl", "bl"], "seed": 9 }
   ],
 
   "timer": { "cx": 150, "cy": 287, "r": 84,

@@ -81,10 +81,10 @@ export function createDialer() {
     if (v >= 1 && v <= 39 && seq.length < 7) { seq.push(v - 1); if (seq.length === 7) start(seq.slice()); }
   }
   function setFast(v) { fast = v; }
-  function force(name) {
+  function force(name, secs) {
     forced = name; phase = name; ringDeg = 0;
     if (name === "idle" || name === "dialing") lockedCount = 0; else lockedCount = 7;
-    if (name === "active") endAt = performance.now() + WORMHOLE_MS;
+    if (name === "active") endAt = performance.now() + (secs > 0 ? secs * 1000 : WORMHOLE_MS);
   }
 
   function update(now) {
@@ -131,7 +131,8 @@ export function createDialer() {
     const dialing = phase === "dialing" || phase === "dialed";
     const elapsed = dialing ? (forced ? frozenMs : Math.min(now - t0, totalDialMs || (now - t0))) : 0;
     return {
-      phase: ph, rawPhase: phase, mode, lockedCount, ringDeg, fast, countdown: countdown(now), status,
+      phase: ph, rawPhase: phase, mode, lockedCount, ringDeg, fast, countdown: countdown(now), status, t: now,
+      timerFrac: phase === "active" ? Math.max(0, Math.min(1, (endAt - now) / WORMHOLE_MS)) : 1,   // 38-min gauge: 1→0
       dialClock: dialing ? `${pad(Math.floor(elapsed / 1000))}.${String(Math.floor(elapsed % 1000)).padStart(3, "0")}` : null,
       address, heroIdx, seq: seq.slice(), buf, ...effects(now),
       clockHHMM: `${pad(d.getHours())}:${pad(d.getMinutes())}`,

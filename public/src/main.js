@@ -36,7 +36,7 @@ async function boot() {
   const q = new URLSearchParams(location.search);
   const forced = q.get("state"), step = q.get("step");
   if (forced === "dialing" && step != null) dialer.freezeStep(+step);   // ?state=dialing&step=N
-  else if (forced) dialer.force(forced);
+  else if (forced) dialer.force(forced, +q.get("secs") || 0);           // ?state=active&secs=N → N s remaining
   if (q.get("debug")) dbg.toggle();
 
   addEventListener("keydown", (e) => {

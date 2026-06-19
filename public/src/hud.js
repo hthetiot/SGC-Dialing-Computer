@@ -47,21 +47,38 @@ export function drawHud(g, M, L, st) {
   const hd = L.header; rect(hd.panelX0, hd.panelY0, hd.panelX1 - hd.panelX0, hd.panelY1 - hd.panelY0, 10); stroke(P.blue, 2);
   text(hd.transport, hd.transportX, hd.transportY, 16, P.cyan);
 
-  // binary-dot panels
+  // binary-dot panels — a sparse white/blue field of data dots with a bright cyan scan band that
+  // sweeps along the zone's long axis (the "loading"/data-stream look from the source captures).
   for (const z of (L.binaryDots || [])) {
     g.strokeStyle = L.style.layers.binaryDots; g.lineWidth = lw(1.5); const A = 12;
     const cn = (cx, cy, dx, dy) => { g.beginPath(); g.moveTo(X(cx + dx * A), Y(cy)); g.lineTo(X(cx), Y(cy)); g.lineTo(X(cx), Y(cy + dy * A)); g.stroke(); };
     const k = z.corners || [];
     if (k.includes("tl")) cn(z.x, z.y, 1, 1); if (k.includes("tr")) cn(z.x + z.w, z.y, -1, 1);
     if (k.includes("bl")) cn(z.x, z.y + z.h, 1, -1); if (k.includes("br")) cn(z.x + z.w, z.y + z.h, -1, -1);
-    g.fillStyle = P.white; const cw = z.w / z.cols, ch = z.h / z.rows;
-    for (let j = 0; j < z.rows; j++) for (let i = 0; i < z.cols; i++) if (((i * 7 + j * 13 + (z.seed || 0) * 5) % 5) < 2) { const d = 3 * sc; g.fillRect(X(z.x + i * cw + cw / 2) - d / 2, Y(z.y + j * ch + ch / 2) - d / 2, d, d); }
+    const cw = z.w / z.cols, ch = z.h / z.rows, seed = z.seed || 0;
+    const horiz = z.cols >= z.rows, span = horiz ? z.cols : z.rows;
+    const sweep = ((st.t || 0) / 32) % (span + 8) - 4;       // scan position along the long axis
+    for (let j = 0; j < z.rows; j++) for (let i = 0; i < z.cols; i++) {
+      if (((i * 7 + j * 13 + seed * 5) % 7) >= 2) continue;  // sparse static field (~28% lit)
+      const near = Math.abs((horiz ? i : j) - sweep) < 1.2;
+      const blue = ((i * 3 + j * 5 + seed) % 5) === 0;
+      g.fillStyle = near ? "#e2f2ff" : blue ? P.blue : "rgba(205,225,255,.5)";
+      const d = (near ? 4 : 3) * sc;
+      g.fillRect(X(z.x + i * cw + cw / 2) - d / 2, Y(z.y + j * ch + ch / 2) - d / 2, d, d);
+    }
   }
 
   // numbers/timer panel — pinned top-left (below header+logo), fixed height
   M.setY("top");
-  // timer arc
-  const t = L.timer; g.strokeStyle = P.blue; g.lineWidth = lw(8); arc(t.cx, t.cy, t.r, -Math.PI * 0.16, Math.PI * 1.16); g.stroke();
+  // timer arc — a 38-min countdown GAUGE: full ring is the dim track, the blue fill = fraction of
+  // time remaining (depletes to zero), turning red in the final minute. clock/date/day sit inside.
+  const t = L.timer, a0 = -Math.PI * 0.16, a1 = Math.PI * 1.16, frac = st.timerFrac ?? 1;
+  const low = !!(st.countdown && st.countdown.startsWith("00:"));
+  g.strokeStyle = "rgba(70,120,210,.22)"; g.lineWidth = lw(8); arc(t.cx, t.cy, t.r, a0, a1); g.stroke();
+  if (frac > 0.001) { g.strokeStyle = low ? P.red : P.blue; g.lineWidth = lw(8); if (low) { g.shadowColor = P.red; g.shadowBlur = 8 * sc; } arc(t.cx, t.cy, t.r, a0, a0 + frac * (a1 - a0)); g.stroke(); g.shadowBlur = 0; }
+  g.textAlign = "center";
+  text(st.clockHHMM, t.cx, t.clockY, 33, P.cyan); text(st.date, t.cx, t.dateY, 24, P.cyan); text(st.day, t.cx, t.dayY, 26, P.cyan);
+  g.textAlign = "left";
 
   // numbers grid + sparklines (wavy line + baseline)
   const n = L.numbers;
@@ -158,9 +175,8 @@ export function drawHud(g, M, L, st) {
   // texts — clock/date/day/status are live. Left-column labels pin to their panel's edge (top/bottom)
   // so they travel with the numbers/checklist panels; everything else uses the centred band.
   for (const tt of (L.texts || [])) {
-    let s = tt.t;
-    if (tt.id === "clock") s = st.clockHHMM || s; else if (tt.id === "date") s = st.date || s;
-    else if (tt.id === "day") s = st.day || s; else if (tt.id === "status") s = st.status || s;
+    if (tt.id === "clock" || tt.id === "date" || tt.id === "day") continue;   // drawn centred in the timer gauge
+    const s = tt.id === "status" ? (st.status || tt.t) : tt.t;
     M.setY(tt.x < 428 ? (tt.y < 537 ? "top" : "bot") : "auto");   // 428 = left column (GL); 537 = design cy
     text(s, tt.x, tt.y, tt.size || 14, P.cyan);
   }

@@ -16,7 +16,7 @@ export function transportRects(L) {
 }
 
 // rolling history for the sidebar telemetry mini-charts (persists across frames)
-const HIST = { fps: [], loop: [], spd: [], idx: [], hud: [], gate: [] };
+const HIST = { fps: [], loop: [], spd: [], dps: [], hud: [], gate: [] };
 
 // draw a gate-svg glyph (Path2D in svg units) centred at design (cxD,cyD), fitted to sizeD design px
 function drawGlyph(g, M, name, cxD, cyD, sizeD, col, strokePx) {
@@ -107,9 +107,10 @@ export function drawHud(g, M, L, st, metrics = {}) {
   // live telemetry — 6 metrics, each a label + value + a rolling history mini-chart (replaces the
   // old static numbers grid). Laid out in the same 2×3 grid anchors from layout.json.
   const n = L.numbers, m = metrics || {};
+  const dps = (m.gateSpeed || 0) * (m.fps || 0);   // live rotation speed (deg/sec) — reads during idle/active spin too
   const ROWS = [
     ["fps", "FPS", `fps ${(m.fps | 0)}`], ["loop", "LOOP", `${(m.loopMs || 0).toFixed(1)}ms`],
-    ["spd", "GATE °/f", `${(m.gateSpeed || 0).toFixed(1)}°`], ["idx", "TGT IDX", `i${m.targetIdx ?? -1}`],
+    ["spd", "GATE °/f", `${(m.gateSpeed || 0).toFixed(2)}°`], ["dps", "GATE °/s", `${Math.round(dps)}°`],
     ["hud", "HUD ms", `${(m.hudMs || 0).toFixed(2)}`], ["gate", "GATE ms", `${(m.gateMs || 0).toFixed(2)}`],
   ];
   const sparkHist = (h, sx, sy, sw, ht) => {
@@ -120,7 +121,7 @@ export function drawHud(g, M, L, st, metrics = {}) {
   };
   for (let i = 0; i < 6; i++) {
     const col = i % 2, row = (i / 2) | 0, x = n.x0 + col * n.colGap, y = n.y0 + row * n.rowGap;
-    const [key, label, val] = ROWS[i], raw = [m.fps, m.loopMs, m.gateSpeed, m.targetIdx, m.hudMs, m.gateMs][i] || 0;
+    const [key, label, val] = ROWS[i], raw = [m.fps, m.loopMs, m.gateSpeed, dps, m.hudMs, m.gateMs][i] || 0;
     const buf = HIST[key]; buf.push(raw); if (buf.length > 30) buf.shift();
     text(label, x, y - 13, 10, "rgba(150,190,255,.65)");
     text(val, x, y, 17, P.white);

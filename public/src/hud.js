@@ -5,8 +5,18 @@
 //
 // st = { clockHHMM, date, day, status, lockedCount (0..7), phase, countdown|null }
 
-import { LOCK_ORDER, GLYPHS } from "./addresses.js";
+import { LOCK_ORDER, GLYPHS, ADDRESSES } from "./addresses.js";
 import { getGlyph } from "./gate.js";
+
+// DESTINATION value (line 2): WAITING when idle; for an INCOMING wormhole show the detected glyph
+// NUMBERS; for OUTGOING show the known gate NAME, or "404 UNKNOWN ADDRESS" if it matches none.
+function destinationText(st) {
+  if (st.rawPhase === "idle" || st.rawPhase === "aborting") return "WAITING";
+  const a = st.address || [];
+  if (st.mode === "incoming") return a.map((i) => i + 1).join(" ");
+  for (const name in ADDRESSES) { const ad = ADDRESSES[name]; if (ad.length === a.length && ad.every((v, k) => v === a[k])) return name.toUpperCase(); }
+  return "404 UNKNOWN ADDRESS";
+}
 
 // the 3 header transport buttons (◀◀ reset/step-back · play/pause · ▶▶ skip/step) — exported so
 // main.js can hit-test the same rects it sees drawn. Design-space rects (mapped through M).
@@ -57,20 +67,20 @@ export function drawHud(g, M, L, st, metrics = {}) {
   // frame (fills the viewport via anchored corners)
   const f = L.frame; g.shadowColor = P.glow; g.shadowBlur = 8 * sc; rect(f.x0, f.y0, f.x1 - f.x0, f.y1 - f.y0, f.r); stroke(P.blue, 3); g.shadowBlur = 0;
   // rail divider
-  g.strokeStyle = P.blue; g.lineWidth = lw(2); line(L.rail.x, 135, L.rail.x, f.y1 - 20);
+  g.strokeStyle = P.blue; g.lineWidth = lw(2); line(L.rail.x, 156, L.rail.x, f.y1 - 20);   // start below the header (y150) so it doesn't collide
   // logo bay
   rect(L.logoBay.x, L.logoBay.y, L.logoBay.w, L.logoBay.h, 8); stroke(P.blue, 2);
   // header panel + functional transport buttons (◀◀ reset/back · play/pause · ▶▶ skip/step)
   const hd = L.header; rect(hd.panelX0, hd.panelY0, hd.panelX1 - hd.panelX0, hd.panelY1 - hd.panelY0, 10); stroke(P.blue, 2);
   for (const b of transportRects(L)) {
     rect(b.x, b.y, b.w, b.h, 5); stroke(P.blue, 1.5);
-    g.fillStyle = P.cyan; const cx = X(b.x + b.w / 2), cy = Y(b.y + b.h / 2), s2 = 5.5 * sc;
+    g.fillStyle = P.cyan; const cx = X(b.x + b.w / 2), cy = Y(b.y + b.h / 2), s2 = 5 * sc;
     const tri = (px, dir) => { g.beginPath(); g.moveTo(px - dir * s2, cy - s2); g.lineTo(px + dir * s2, cy); g.lineTo(px - dir * s2, cy + s2); g.closePath(); g.fill(); };
     if (b.id === "play") {
-      if (metrics.paused) tri(cx - s2 * 0.4, 1);                                  // ▶ (resume)
-      else { g.fillRect(cx - s2 * 0.9, cy - s2, s2 * 0.7, s2 * 2); g.fillRect(cx + s2 * 0.2, cy - s2, s2 * 0.7, s2 * 2); }  // ▌▌
-    } else if (b.id === "back") { tri(cx + s2 * 0.2, -1); tri(cx + s2 * 1.4, -1); }  // ◀◀
-    else { tri(cx - s2 * 1.4, 1); tri(cx - s2 * 0.2, 1); }                          // ▶▶
+      if (metrics.paused) tri(cx, 1);                                            // ▶ centred
+      else { g.fillRect(cx - s2 * 0.85, cy - s2, s2 * 0.55, s2 * 2); g.fillRect(cx + s2 * 0.3, cy - s2, s2 * 0.55, s2 * 2); }  // ▌▌ centred
+    } else if (b.id === "back") { tri(cx - s2 * 0.6, -1); tri(cx + s2 * 0.6, -1); }  // ◀◀ centred
+    else { tri(cx - s2 * 0.6, 1); tri(cx + s2 * 0.6, 1); }                          // ▶▶ centred
   }
 
   // binary-dot panels — a sparse white/blue field of data dots with a bright cyan scan band that
@@ -164,7 +174,7 @@ export function drawHud(g, M, L, st, metrics = {}) {
   // A force-centred X map (cxs) keeps the whole block scaling as a unit so it never stretches.
   { const a = ft.auth, cx = 745.5, cw = a.cellW, n1 = a.g1n, n2 = a.g2n, digits = a.text.replace("-", "");
     const totalW = (n1 + n2 + 1) * cw, startX = cx - totalW / 2, cyB = 1016, chB = 28, midY = cyB + chB / 2;
-    const cxs = (dx) => M.vw / 2 + (dx - cx) * sc;
+    const cxs = (dx) => M.vw / 2 + (dx - cx + 22) * sc;   // +22: shift the block right so the LABEL clears the sidebar rail
     const ctext = (s, dx, dy, size, col, al, base) => { g.textAlign = al || "left"; g.textBaseline = base || "top"; g.font = `${size * sc}px "DejaVu Sans Mono","Consolas",monospace`; g.fillStyle = col; g.fillText(s, cxs(dx), Y(dy)); };
     g.strokeStyle = P.blue; g.lineWidth = lw(1.5);
     let di = 0;
@@ -245,6 +255,11 @@ export function drawHud(g, M, L, st, metrics = {}) {
     // (left/right-anchored) readout box instead of drifting on non-design aspects.
     if (tt.id === "lst1") { g.textAlign = "left"; text(tt.t, L.footer.readout.x, tt.y, tt.size || 14, P.cyan); continue; }
     if (tt.id === "lst2") { g.textAlign = "right"; text(tt.t, L.footer.readout.x + L.footer.readout.w, tt.y, tt.size || 14, P.cyan); g.textAlign = "left"; continue; }
+    if (tt.id === "destination") {   // two lines like STATUS: label (cyan) + value (white); sits just after the header binary dots, inside the header
+      text("DESTINATION:", tt.x, tt.y - 10, 18, P.cyan);
+      text(destinationText(st), tt.x, tt.y + 12, 16, P.white);
+      continue;
+    }
     if (tt.id === "status") {   // two lines: "STATUS:" then the phase description, so long values don't overlap
       const val = (st.status || tt.t).replace(/^STATUS:\s*/, ""), sz = 15;
       text("STATUS:", tt.x, tt.y - 9, sz, P.cyan);

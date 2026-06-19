@@ -31,8 +31,8 @@
     { "id": "footer-right", "x": 1162, "y": 888, "w": 18, "h": 113, "cols": 1, "rows": 5, "corners": ["tl", "bl"], "seed": 9 }
   ],
 
-  "timer": { "cx": 150, "cy": 287, "r": 84,
-             "clockX": 150, "clockY": 262, "dateY": 312, "dayY": 348 },
+  "timer": { "cx": 162, "cy": 287, "r": 84,
+             "clockX": 162, "clockY": 244, "dateY": 294, "dayY": 330 },
 
   "numbers": { "x0": 94, "colGap": 116, "y0": 413, "rowGap": 73, "size": 24,
                "sparkX": 60, "sparkColGap": 116, "sparkW": 88, "sparkDown": 39, "sparkBase": 11,
@@ -79,7 +79,7 @@
   "texts": [
     { "id": "credit1", "t": "David Arnold arr. Joel Goldsmith", "x": 200, "y": 37, "size": 19 },
     { "id": "credit2", "t": "Stargate SG-1: Main Title", "x": 200, "y": 65, "size": 19 },
-    { "id": "destination", "t": "DESTINATION", "x": 1112, "y": 73, "size": 28 },
+    { "id": "destination", "t": "DESTINATION", "x": 925, "y": 42, "size": 28 },
     { "id": "clock", "t": "17:56", "x": 102, "y": 267, "size": 33 },
     { "id": "date", "t": "29/03/20", "x": 102, "y": 313, "size": 24 },
     { "id": "day", "t": "29", "x": 138, "y": 344, "size": 28 },

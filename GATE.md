@@ -55,28 +55,72 @@ turns within them.
 - Workflow: clean `tmp/` (keep `target.png`) → `capture` → `diff`/`zoom`/`probe` → adjust
   `layout.json`/`hud.js` → repeat.
 
+### Mask-based measurement (the precise source — USE THIS for layout numbers)
+`tmp/target.png` is a dim, CRT-noised photo of the screen; measuring it directly is unreliable.
+`tmp/vector.svg` is a **binary trace** of the same frame (one `evenodd` black-fill path, 1491×1074)
+— rendered it is crisp black HUD line-art on white, with NO navy/noise/anti-alias haze. It is the
+authoritative geometry source.
+- `node scripts/mask.js` → `tmp/mask.png` (black art on white, for viewing).
+- `node scripts/mask.js inv` → `tmp/mask_inv.png` (white art on black — feed THIS to `probe.js`,
+  which keys on `lum>60`). All §2 numbers below were measured from `mask_inv.png`.
+- `node scripts/mask.js over` → `tmp/mask_over.png` (mask dimmed + `trace.json` vectors on top).
+- `node scripts/trace.js` → `tmp/trace.png` — draws the whole hand-authored vector model from
+  `trace.json` over the (brightened) target, each HUD layer a distinct color + legend. The
+  pre-code VALIDATION artifact: confirm every line/path before writing `layout.json`/`hud.js`.
+- `node scripts/circuits.js` → `tmp/circuits.png` — paints the ACTUAL circuit pixels (yellow)
+  next to the `trace.json` routing (red) so each trace can be followed and solved one by one.
+
+### `trace.json` (the validated model — single source of truth)
+All HUD geometry in **target pixels (1491×1074)**, measured from the mask. `trace.js` renders it;
+`public/src/layout.json` is derived from it (normalize by /1491 x, /1074 y) once validated.
+
 ---
 
 ## 2. Screen-accurate facts and measurements
 
-### Gate placement (MEASURED from `tmp/target.png`, 1491×1074, via `scripts/probe.js`)
-- Ring center: **(0.498, 0.478)** = px (743, 513). Outer blue rim radius **0.211** of viewport
-  width = px 315. (Earlier 0.464/0.222 was eyeballed and wrong — the gate sits dead-centerish,
-  not left.) White ring band radius ≈ 0.157 (px 234).
+### Gate placement (MEASURED from `tmp/mask_inv.png`, 1491×1074)
+- Ring center: px **(743, 513)** = (0.498, 0.478). Outer rim radius **R = 315** px (0.211·W).
 - Chevron radius 0.93·R; glyph track 0.70–0.875·R; **event-horizon / inner void 0.66·R**.
+- **9 chevron tips (px, radially measured on the mask)** — feed these as the circuit endpoints:
+  90→(743,196) · 50→(933,287) · 10→(1035,462) · 330→(1011,668) · 290→(848,802) ·
+  250→(638,802) · 210→(476,667) · 170→(451,462) · 130→(553,287). (290/250 = unused bottom pair.)
 
-### Other measured anchors (fractions of viewport; see `public/src/layout.json`)
-- Outer frame: left 0.020, right 0.969, top 0.014, bottom 0.994 (px 30/1445/16/1068), with a
-  diagonal chamfer at the top-left where the logo bay notches in.
-- Logo bay: x 0.030, y 0.052, w 0.093, h 0.089.
-- Timer arc: center (0.101, 0.267), radius 0.077 of height (px center 150,287 r 83). Clock
-  (HH:MM / date / day) is CENTER-aligned inside the arc.
-- Result boxes: first at x 0.830, y 0.154, w 0.0865, h 0.094; stepY 0.110; 7 boxes. Number sits
-  small at the box bottom-left.
-- Footer: readout x 0.193 w 0.569; auth digits in segmented cells x0 0.432 → x1 0.781; LST CODE
-  #1 x 0.205, #2 x 0.693; USER/SYS right-anchored.
-- STATUS is a small bordered box (x 0.029, w 0.158) ABOVE the checklist; text must fit inside it
-  (keep it short — no OUTGOING/INCOMING prefix or it overflows the panel).
+### Other measured anchors (px @ 1491×1074; full set lives in `trace.json`)
+- Outer frame: x0 29, y0 12, x1 1458, y1 1069, **plain rounded rectangle, corner r≈24 on all four
+  corners (NO chamfer)**. The logo bay + header are separate boxes sitting inside the top-left;
+  there is no diagonal cut in the frame itself. (An earlier "top-left chamfer" note was wrong.)
+- Left-panel divider (vertical) at x≈288. Circuit **left rail** = nested verticals x≈300/307/314.
+- Logo bay: x 47, y 30, w 128, h 120 (rounded box holding the 3D emblem).
+- Header: panel x 187–1175, y 25–150. Music credit lines anchor at **x 197**, y 42 & 75 (left).
+  Transport ◀◀▶▶▶ at x≈405, y 118. Binary-dot panel x 620–1160. DESTINATION text x 1015–1258, y 88.
+- Timer arc: center (150, 287), r 84 (open lower-right). Clock 17:56 (y≈262) / date 29/03/20 (y≈312)
+  / day 29 (y≈348), CENTER-aligned on x 150.
+- Numbers grid (2×3): columns x 103 & 217; value rows y 416 / 492 / 568; sparkline +38 below each.
+- **STATUS is TEXT ONLY — there is NO bordered box** (the mask shows no border). "STATUS: DIALING
+  SEQUENCE" is centered ≈ x 158, y 702, in the gap between the numbers grid and the checklist.
+- Checklist: panel x 64, y 733, w 216, h 268 (bottom ≈ 1001), with a right-tab divider at x≈275.
+  7 rows: [left square x≈84][RED bar x 100–145][blue number x≈168][right square x≈250]. Bar centres
+  y 765→963, pitch 33.
+- Result boxes: left 1238, right 1367 (w 129), **top0 165, stepY 117.5, h 101** (the box body —
+  151 is the outer line of the thick double top border), 7 boxes. Bold white number at the box
+  lower-LEFT, OUTSIDE the box. Circuit taps connect at box **centre**: boxes 1–3 on the LEFT edge
+  (y 215/330/451), boxes 4–7 on the RIGHT edge (y 568/685/803/920).
+- Footer: **readout box x 332, y 888, w 805, h 113** (a wide box; idle empty, holds the countdown
+  when active). AUTHORIZATION CODE segmented cells x0 628 → x1 1210 (15 cells, pitch ≈38.8, the 7th
+  is the `-` gap), digit baseline y≈1028; label "AUTHORIZATION CODE:" at x≈290. LST CODE #1 x≈300,
+  #2 x≈1016, y≈812. USER: / SYS: right block at x≈1245, y 1008 / 1036.
+
+### Circuit anchors (the trace network — all in `trace.json` as explicit polylines)
+Right boxes 1–3 leave the box LEFT edge (box1 = single shallow diagonal to its tip; boxes 2–3 =
+horizontal stub to **turnX 1178** then a diagonal to the tip). Boxes 4–7 leave the RIGHT edge into
+**nested lanes x 1401/1415/1429/1443**, rise to **nested top-rail levels y 137/123/109/96**, run
+left: 4/5/6 drop the **left rail** to a short horizontal tap into their chevron (210/170/130),
+7 runs to x 743 and drops to the top chevron (90). The bottom pair (250°,290°) carry no trace.
+
+### NOTE — target.png is a MID-DIAL frame, not pure idle
+The canonical frame shows **STATUS: DIALING SEQUENCE** with the checklist **red bars lit**, while
+the circuit is still all-blue, chevrons unlit, boxes empty. A pixel match to `target.png` must
+render that exact mixed state (red checklist bars + dialing status text).
 
 ### Chevron angles (degrees, 0 = +X, CCW)
 - The 9 chevron clamp centers: `[90, 50, 10, 330, 290, 250, 210, 170, 130]`.
@@ -119,8 +163,7 @@ _i_-th locked chevron). The two unused bottom chevrons (250°, 290°) carry no t
 | 7 | 90° | top (origin) | box RIGHT edge → lane → top rail → drop down to the top chevron |
 
 Structure carrying the above:
-- **Outer frame**: one big rounded rect around the console, with a diagonal **chamfer at the
-  top-left** where the logo bay notches in.
+- **Outer frame**: one big rounded rect around the console (rounded corners all four, no chamfer).
 - **Inner rail = shared bus**: left vertical edge (x ≈ 0.205) + rounded top-left corner + top
   edge. The far-right box lanes, the top point-of-origin drop, and the left-chevron taps all
   merge into this rail.
@@ -150,7 +193,7 @@ chevrons DO connect, via the rail. The left zoom confirms it.)
 Independent, individually-toggleable canvas layers. **Each layer owns its own text** (labels
 live with their layer — there is no separate "labels" layer, and no standalone "frame" layer).
 
-- `outerFrame` — the big enclosing rounded rect + top-left chamfer + logo bay box. Drawn first.
+- `outerFrame` — the big enclosing rounded rect (rounded corners, no chamfer) + logo bay box. Drawn first.
 - `header` — music text + transport (◀◀ ▶ ▶▶), centered binary dot panel (dim, ~3 rows),
   DESTINATION text, inner rail enclosure.
 - `left` — timer arc + centered clock/date/day, the 2×3 numbers grid with sparklines, the

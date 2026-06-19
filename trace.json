@@ -1,0 +1,75 @@
+{
+  "_doc": "Hand-authored vector model of tmp/target.png (1491x1074), measured tile-by-tile from tmp/mask_inv.png via scripts/grid.js. Single source of truth for HUD geometry; validated via `node scripts/trace.js` -> tmp/trace.png. layout.json is derived from this. All coords in TARGET pixels.",
+  "canvas": { "w": 1491, "h": 1074 },
+
+  "frame": { "x0": 29, "y0": 12, "x1": 1458, "y1": 1069, "r": 24 },
+
+  "rail": { "x": 288, "busX": 306, "topY": 40 },
+
+  "logoBay": { "x": 47, "y": 30, "w": 128, "h": 120 },
+
+  "header": { "panelX0": 187, "panelX1": 1175, "panelY0": 25, "panelY1": 150,
+              "creditX": 197, "credit1Y": 42, "credit2Y": 75,
+              "binaryX0": 620, "binaryX1": 1160, "binaryY0": 40, "binaryY1": 120,
+              "transportX": 405, "transportY": 118,
+              "destX": 1015, "destX1": 1258, "destY": 88 },
+
+  "timer": { "cx": 150, "cy": 287, "r": 84,
+             "clockX": 150, "clockY": 262, "dateY": 312, "dayY": 348 },
+
+  "numbers": { "x0": 103, "x1": 217, "colGap": 114, "y0": 416, "rowGap": 76,
+               "cols": 2, "rows": 3, "sparkDown": 38 },
+
+  "_status_doc": "STATUS is TEXT ONLY — there is NO bordered box (the mask shows no border). It sits centered in the left panel between the numbers grid and the checklist.",
+  "status": { "cx": 158, "y": 702, "text": "STATUS: DIALING SEQUENCE" },
+
+  "checklist": { "x": 64, "y": 733, "w": 216, "h": 268, "rows": 7,
+                 "bar0Y": 765, "barStepY": 33,
+                 "sqL": 84, "barL": 100, "barR": 145, "numX": 168, "sqR": 250, "rightTabX": 275 },
+
+  "footer": { "lst1X": 300, "lst2X": 1016, "lstY": 812,
+              "readout": { "x": 332, "y": 888, "w": 805, "h": 113 },
+              "authLabelX": 290, "authY": 1028,
+              "authCellX0": 628, "authCellX1": 1210, "authCells": 15, "dashCell": 6,
+              "authText": "778927-57892387",
+              "userX": 1245, "userY": 1008, "sysY": 1036 },
+
+  "boxes": { "left": 1238, "right": 1367, "top0": 165, "stepY": 117.5, "h": 101, "count": 7,
+             "numDX": -30, "numDY": 86,
+             "lanesX": [1401, 1415, 1429, 1443] },
+
+  "gate": { "cx": 743, "cy": 513, "R": 315,
+            "rings": [1.0, 0.93, 0.745, 0.66],
+            "chevR": 0.96,
+            "chevrons": [90, 50, 10, 330, 290, 250, 210, 170, 130],
+            "unused": [250, 290],
+            "tips": { "90": [743,196], "50": [933,287], "10": [1035,462], "330": [1011,668],
+                      "290": [848,802], "250": [638,802], "210": [476,667], "170": [451,462], "130": [553,287] } },
+
+  "_circuit_doc": "Each circuit is box i -> the i-th locked chevron. pts = explicit polyline (target px) measured from tmp/mask_inv.png. Boxes 1-3 leave the box LEFT edge; boxes 4-7 leave the RIGHT edge into nested lanes -> top rail -> left rail/center drop. Anchors: box left x=1238 right x=1367; conn at box centre; stub turnX=1178; lanesX=[1401,1415,1429,1443]; topRailY={4:137,5:123,6:109,7:96}; leftRailX={4:300,5:307,6:314}.",
+  "circuit": [
+    { "box": 1, "chev": 50,  "pts": [[1238,215],[933,287]] },
+    { "box": 2, "chev": 10,  "pts": [[1238,330],[1178,330],[1035,462]] },
+    { "box": 3, "chev": 330, "pts": [[1238,451],[1178,451],[1011,668]] },
+    { "box": 4, "chev": 210, "pts": [[1367,568],[1401,568],[1401,137],[300,137],[300,667],[476,667]] },
+    { "box": 5, "chev": 170, "pts": [[1367,685],[1415,685],[1415,123],[307,123],[307,462],[451,462]] },
+    { "box": 6, "chev": 130, "pts": [[1367,803],[1429,803],[1429,109],[314,109],[314,287],[553,287]] },
+    { "box": 7, "chev": 90,  "pts": [[1367,920],[1443,920],[1443,96],[743,96],[743,196]] }
+  ],
+  "lockOrder": [50, 10, 330, 210, 170, 130, 90],
+
+  "texts": [
+    { "t": "David Arnold arr. Joel Goldsmith", "x": 197, "y": 42, "align": "left" },
+    { "t": "Stargate SG-1: Main Title", "x": 197, "y": 75, "align": "left" },
+    { "t": "DESTINATION", "x": 1015, "y": 88, "align": "left" },
+    { "t": "17:56", "x": 150, "y": 262, "align": "center", "size": 34 },
+    { "t": "29/03/20", "x": 150, "y": 312, "align": "center" },
+    { "t": "29", "x": 150, "y": 348, "align": "center", "size": 26 },
+    { "t": "STATUS: DIALING SEQUENCE", "x": 158, "y": 702, "align": "center" },
+    { "t": "LST CODE # 1", "x": 300, "y": 812, "align": "left" },
+    { "t": "LST CODE # 2", "x": 1016, "y": 812, "align": "left" },
+    { "t": "AUTHORIZATION CODE:", "x": 290, "y": 1028, "align": "left" },
+    { "t": "USER: SGT. W HARRIMAN", "x": 1245, "y": 1008, "align": "left" },
+    { "t": "SYS: NOMINAL", "x": 1245, "y": 1036, "align": "left" }
+  ]
+}

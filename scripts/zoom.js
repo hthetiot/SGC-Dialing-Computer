@@ -15,26 +15,29 @@
 
 import http from "node:http";
 import { spawn } from "node:child_process";
-import { existsSync, createReadStream, readSync, openSync, closeSync } from "node:fs";
+import { existsSync, createReadStream, readSync, openSync, closeSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-const TMP = ROOT + "tmp/";
+const OUTDIR = ROOT + "tmp/zoom/";
 const PORT = Number(process.env.PORT ?? 0);
-const OUTNAME = process.env.OUT ?? "zoom.png";
 
 const a = process.argv.slice(2);
 const file = a[0] || "target.png";
 const nums = a.slice(1).map(Number).filter((n) => !Number.isNaN(n));
 
-if (!existsSync(TMP + file)) { console.error(`✗ not found: tmp/${file}`); process.exit(1); }
+// resolve input from source/ then tmp/ (tmp paths may include a subfolder, e.g. "mask/over.png")
+const resolve = (name) => { for (const base of [ROOT + "source/", ROOT + "tmp/"]) if (existsSync(base + name)) return base + name; return null; };
+const inPath = resolve(file);
+if (!inPath) { console.error(`✗ not found in source/ or tmp/: ${file}`); process.exit(1); }
+mkdirSync(OUTDIR, { recursive: true });
 
 // PNG IHDR dimensions (big-endian uint32 @ offset 16/20)
 function pngSize(p) {
   const fd = openSync(p, "r"); const b = Buffer.alloc(24); readSync(fd, b, 0, 24, 0); closeSync(fd);
   return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
 }
-const dim = pngSize(TMP + file);
+const dim = pngSize(inPath);
 
 // arg forms: [] | [z] | [x y w h] | [x y w h z]
 let x = 0, y = 0, w = dim.w, h = dim.h, z = 1.5;
@@ -65,13 +68,15 @@ x.drawImage(img,${x},${y},${w},${h},0,0,c.width,c.height);};img.src='/img';
 const server = http.createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, "http://x").pathname);
   if (p === "/_zoom.html") { res.writeHead(200, { "content-type": "text/html" }); res.end(HTML); return; }
-  if (p === "/img") { res.writeHead(200, { "content-type": "image/png" }); createReadStream(TMP + file).pipe(res); return; }
+  if (p === "/img") { res.writeHead(200, { "content-type": "image/png" }); createReadStream(inPath).pipe(res); return; }
   res.writeHead(404); res.end("404");
 });
 
 await new Promise((r) => server.listen(PORT, r));
 const port = server.address().port;
-const out = TMP + OUTNAME;
+// param-named output: tmp/zoom/<basename>_x<X>_y<Y>_w<W>_h<H>_z<Z>.png
+const stem = file.replace(/.*\//, "").replace(/\.png$/, "");
+const out = process.env.OUT ? OUTDIR + process.env.OUT : `${OUTDIR}${stem}_x${x}_y${y}_w${w}_h${h}_z${z}.png`;
 
 const code = await new Promise((resolve) => {
   const proc = spawn(findChrome(), [

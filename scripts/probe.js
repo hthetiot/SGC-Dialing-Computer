@@ -8,11 +8,17 @@
 //   node scripts/probe.js blue-row <y> [file]   # runs where BLUE frame dominates
 // file defaults to target.png. Coordinates are in image pixels (target is 1491x1074).
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { inflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
-const TMP = fileURLToPath(new URL("../tmp/", import.meta.url));
+// Resolve a probe target by name: prefer source/ (target.png, mask.png, mask_inv.png, vector mask),
+// then fall back to tmp/ (a script output, possibly in a subfolder given as "trace/trace.png").
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
+const resolve = (name) => {
+  for (const base of [ROOT + "source/", ROOT + "tmp/"]) if (existsSync(base + name)) return base + name;
+  return ROOT + "source/" + name; // default; will throw on read if truly missing
+};
 const [mode, ...rest] = process.argv.slice(2);
 
 function decodePNG(path) {
@@ -49,8 +55,12 @@ function decodePNG(path) {
   return { width, height, ch, data: out };
 }
 
-const img = decodePNG(TMP + (rest[mode === "px" ? 2 : 1] || "target.png"));
-const px = (x, y) => { const o = (y * img.width + x) * img.ch; return [img.data[o], img.data[o + 1], img.data[o + 2]]; };
+const reqFile = rest[mode === "px" ? 2 : 1] || "target.png";
+const img = decodePNG(resolve(reqFile));
+// The mask is black art on white; invert it so "bright" still means "HUD line" for all the
+// luminance/edge tests below (replaces the old separate mask_inv.png).
+const INV = /mask/i.test(reqFile);
+const px = (x, y) => { const o = (y * img.width + x) * img.ch; const r = img.data[o], g = img.data[o + 1], b = img.data[o + 2]; return INV ? [255 - r, 255 - g, 255 - b] : [r, g, b]; };
 const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
 
 function runs(vals, test) {

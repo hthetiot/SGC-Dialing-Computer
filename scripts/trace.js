@@ -244,12 +244,12 @@ function draw(img){
   g.strokeStyle=COL.gate; g.lineWidth=1.5;
   for(const k of M.gate.rings){ g.beginPath(); g.arc(M.gate.cx,M.gate.cy,M.gate.R*k,0,7); g.stroke(); }
   g.lineWidth=2;
-  if(M.gate.tips){ for(const k in M.gate.tips){ const[tx,ty]=M.gate.tips[k]; const used=!M.gate.unused.includes(+k);
-    g.fillStyle=used?'#00e5ff':'#888'; g.beginPath(); g.arc(tx,ty,4,0,7); g.fill(); } }
 
   // circuit — explicit measured polylines, one colour per route
   const pal=D.STYLE.circuitPalette;
   D.CIRCUIT.forEach((rt,i)=>{ g.strokeStyle=pal[i%pal.length]; g.lineWidth=2.5; if(rt.pts) poly(rt.pts); g.lineWidth=2; });
+  // blue dots = each circuit's CHEVRON anchor (its last point), like chevron 7
+  g.fillStyle='#00e5ff'; D.CIRCUIT.forEach(rt=>{ if(rt.pts){ const p=rt.pts[rt.pts.length-1]; g.beginPath(); g.arc(p[0],p[1],4,0,7); g.fill(); } });
 
   // texts — every standalone label at its measured TOP-LEFT anchor, sized to the mask
   g.textBaseline='top'; g.textAlign='left';

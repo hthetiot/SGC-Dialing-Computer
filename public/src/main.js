@@ -72,7 +72,7 @@ function resize() {
 
 function loop() {
   const now = performance.now();
-  if (demoAt && now > demoAt) { dialer.start("outgoing"); demoAt = 0; }
+  if (demoAt && now > demoAt) { dialer.start(); demoAt = 0; }   // start() = default address (Abydos); never pass the mode here
   dialer.update(now);
   const st = dialer.state(now);
   const vw = innerWidth, vh = innerHeight, M = makeScreen(vw, vh);

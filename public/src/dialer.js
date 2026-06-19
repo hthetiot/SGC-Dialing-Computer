@@ -22,7 +22,7 @@ export function createDialer() {
   const pad = (n) => String(n).padStart(2, "0");
 
   function start(addr) {
-    address = addr || (seq.length === 7 ? seq.slice() : mode === "incoming" ? ADDRESSES.Apophis : ADDRESSES.Abydos);
+    address = Array.isArray(addr) ? addr : (seq.length === 7 ? seq.slice() : mode === "incoming" ? ADDRESSES.Apophis : ADDRESSES.Abydos);
     phase = "dialing"; t0 = performance.now(); lockedCount = 0; lastLock = 0; forced = null;
   }
   function abort() { if (phase === "idle" || phase === "active") { reset(); return; } phase = "aborting"; t0 = performance.now(); }
